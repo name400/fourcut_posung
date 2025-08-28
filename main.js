@@ -21,7 +21,7 @@ const hiddenCanvas = $('#hiddenCanvas');
 const btnGallery = $('#btnGallery');
 const gallery = $('#gallery');
 const btnCloseGallery = $('#btnCloseGallery');
-const btnClearGallery = $('#btnClearGallery');
+const btnWipeGallery = $('#btnWipeGallery'); // ✅ 전체삭제 버튼 (ID 일치)
 const busyEl = $('#busy');
 const backdrop = document.getElementById('backdrop');
 
@@ -29,13 +29,15 @@ const backdrop = document.getElementById('backdrop');
 const idb = (window.idbKeyval && typeof window.idbKeyval.set === 'function') ? {
   set: window.idbKeyval.set,
   get: window.idbKeyval.get,
-  keys: window.idbKeyval.keys
+  keys: window.idbKeyval.keys,
+  del: window.idbKeyval.del,                                // ✅ del 추가
 } : {
   set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch(_) {} return Promise.resolve(); },
   get: async (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch(_) { return null; } },
-  keys: async () => Object.keys(localStorage).filter(k => k.startsWith('photo:'))
+  keys: async () => Object.keys(localStorage),              // fallback에선 전부 반환
+  del: async (k) => { try { localStorage.removeItem(k); } catch(_) {} }, // ✅ del 추가
 };
-const { set: idbSet, get: idbGet, keys: idbKeys } = idb;
+const { set: idbSet, get: idbGet, keys: idbKeys, del: idbDel } = idb;     // ✅ del 구조분해
 
 /* ====== state ====== */
 let stream = null;
@@ -296,12 +298,17 @@ btnCloseGallery.onclick = closeGallerySmooth;
 backdrop.onclick = closeGallerySmooth;
 document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape' && !gallery.hidden) closeGallerySmooth(); });
 
-/* 전체 삭제 */
-btnClearGallery.onclick = async ()=>{
+/* ✅ 전체 삭제 (IndexedDB에서 실제 삭제) */
+btnWipeGallery.onclick = async ()=>{
   if(!confirm('갤러리를 모두 삭제할까요?')) return;
   const keys = await idbKeys();
-  for(const k of keys){ if(String(k).startsWith('photo:')) localStorage.removeItem(k); }
+  for (const k of keys) {
+    if (String(k).startsWith('photo:')) {
+      await idbDel(k);                      // IndexedDB or fallback 삭제
+    }
+  }
   await renderGallery();
+  alert('삭제 완료');
 };
 
 /* ====== render gallery ====== */
@@ -317,12 +324,13 @@ async function renderGallery(){
     const img = document.createElement('img');
     img.src = it.image; img.title = new Date(it.createdAt).toLocaleString();
 
+    // (요청대로 개별 X 버튼 로직은 변경하지 않음)
     const del = document.createElement('button');
     del.className = 'del';
     del.innerHTML = '×';
     del.onclick = async ()=>{
       if(!confirm('이 이미지를 삭제할까요?')) return;
-      localStorage.removeItem(`photo:${it.id}`);
+      localStorage.removeItem(`photo:${it.id}`);           // 기존 로직 유지
       await renderGallery();
     };
 
