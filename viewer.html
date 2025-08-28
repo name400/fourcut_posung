@@ -24,26 +24,19 @@
 
   <script>
     const raw = location.hash.replace(/^#img=/,'');
-    const fail = (msg) => {
-      document.body.innerHTML =
-        `<div style="padding:24px"><b>이미지를 불러오지 못했습니다.</b><br>${msg || ''}</div>`;
-    };
-    if (!raw) { fail('해시가 없습니다.'); }
-    else if (!window.LZString) { fail('LZString 로드 실패. 네트워크 확인 후 새로고침.'); }
-    else {
-      try {
+    const fail = (msg)=>{ document.body.innerHTML = `<div style="padding:24px"><b>이미지를 불러오지 못했습니다.</b><br>${msg||''}</div>`; };
+    if(!raw){ fail('데이터가 없습니다.'); }
+    else if(!window.LZString){ fail('LZString 로드 실패'); }
+    else{
+      try{
         const dataUrl = LZString.decompressFromEncodedURIComponent(raw);
-        if (!dataUrl || !/^data:image\//.test(dataUrl)) throw new Error('잘못된 데이터');
+        if(!dataUrl || !/^data:image\//.test(dataUrl)) throw new Error('잘못된 데이터');
         const img = document.getElementById('img'); img.src = dataUrl;
-
         document.getElementById('btnSave').onclick = ()=>{
-          const a = document.createElement('a');
-          a.href = dataUrl; a.download = 'picrep/fourcut.jpg'; a.click();
+          const a=document.createElement('a'); a.href=dataUrl; a.download='fourcut.jpg'; a.click();
         };
-        document.getElementById('btnOpenRaw').onclick = ()=>{
-          window.open(dataUrl, '_blank', 'noopener,noreferrer');
-        };
-      } catch (e) { fail('디코딩 오류: ' + (e?.message || e)); }
+        document.getElementById('btnOpenRaw').onclick = ()=> window.open(dataUrl, '_blank', 'noopener,noreferrer');
+      }catch(e){ fail('디코딩 오류: ' + (e?.message||e)); }
     }
   </script>
 </body>
