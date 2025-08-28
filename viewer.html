@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>네컷 저장 • Fourcut Viewer</title>
+  <link rel="stylesheet" href="./style.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
+</head>
+<body>
+  <main class="container" style="grid-template-columns:1fr;max-width:680px">
+    <section class="panel">
+      <div class="card preview">
+        <img id="img" alt="fourcut" style="max-width:100%;border-radius:16px;border:1px solid #1f2330"/>
+      </div>
+      <div class="actions">
+        <button id="btnSave" class="primary">이미지 저장</button>
+        <button id="btnOpenRaw" class="ghost">새 탭에서 열기</button>
+      </div>
+      <div class="tiny-hint">iOS: 새 탭에서 열어 길게 눌러 "사진 저장"을 사용하세요.</div>
+    </section>
+  </main>
+
+  <script>
+    const hash = location.hash.replace(/^#img=/,'');
+    if(!hash){
+      document.body.innerHTML = '<p style="padding:24px">이미지 데이터가 없습니다.</p>';
+    }else{
+      const dataUrl = LZString.decompressFromEncodedURIComponent(hash);
+      const img = document.getElementById('img');
+      img.src = dataUrl;
+      document.getElementById('btnSave').onclick = ()=>{
+        const a = document.createElement('a');
+        a.href = dataUrl; a.download = 'fourcut.jpg'; a.click();
+      };
+      document.getElementById('btnOpenRaw').onclick = ()=>{
+        window.open(dataUrl, '_blank');
+      };
+    }
+  </script>
+</body>
+</html>

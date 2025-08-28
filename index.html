@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>네컷 부스 • Fourcut Booth</title>
+  <meta name="theme-color" content="#0b0c10" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css" />
+  <!--라이브러리-->
+  <script defer src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/idb-keyval.iife.min.js"></script>
+  <script defer src="./main.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="dot"></div><span>2026 보성제</span>
+    </div>
+    <nav class="steps" id="stepper">
+      <span class="step active">1 촬영</span>
+      <span class="sep">›</span>
+      <span class="step">2 선택</span>
+      <span class="sep">›</span>
+      <span class="step">3 프레임</span>
+      <span class="sep">›</span>
+      <span class="step">4 생성/공유</span>
+    </nav>
+    <div class="right-actions">
+      <button id="btnFlip" class="ghost" title="전면/후면 전환">카메라 전환</button>
+      <button id="btnReset" class="ghost" title="초기화">초기화</button>
+      <button id="btnGallery" class="ghost">갤러리</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="panel">
+      <div class="card cam">
+        <video id="video" autoplay playsinline></video>
+        <div class="cam-overlay">
+          <div class="overlay-row">
+            <button id="btnStart" class="primary">카메라 시작</button>
+            <div class="counter" id="shotCounter">0 / 6</div>
+          </div>
+          <div class="overlay-row bottom">
+            <button id="btnShot" class="accent" disabled>촬영</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card thumbs">
+        <div class="thumb-grid" id="thumbGrid"></div>
+        <div class="hint">썸네일을 눌러 <b>4장</b> 선택하세요</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="card frame-picker">
+        <div class="frame-pills">
+          <button class="pill selected" data-frame="classic">클래식</button>
+          <button class="pill" data-frame="black">블랙</button>
+          <button class="pill" data-frame="polaroid">폴라로이드</button>
+        </div>
+        <label class="cap-label">캡션</label>
+        <input id="caption" class="input" placeholder="나만의 네컷" maxlength="24" />
+      </div>
+
+      <div class="card preview">
+        <div id="fourcut" class="fourcut classic">
+          <div class="grid" id="finalGrid"></div>
+          <div class="polaroid-cap" id="polaroidCap"></div>
+          <div class="busy" id="busy" hidden>
+            <div class="spinner"></div>
+            <span>이미지 생성 중…</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="btnMake" class="primary" disabled>네컷 이미지 생성</button>
+        <button id="btnSave" class="ghost" disabled>기기 저장</button>
+        <button id="btnQR" class="accent" disabled>QR 만들기</button>
+      </div>
+
+      <div class="tiny-hint">※ iOS Safari는 저장 시 이미지가 새 탭에 열릴 수 있어요. 길게 눌러 "사진 저장" 하세요.</div>
+    </section>
+  </main>
+
+  <div class="modal" id="qrModal" hidden>
+    <div class="modal-card">
+      <h3>QR로 공유</h3>
+      <canvas id="qrCanvas" width="260" height="260" aria-label="QR code"></canvas>
+      <div class="qr-link" id="qrLinkText" title="링크를 길게 눌러 복사할 수 있어요"></div>
+      <div class="qr-actions">
+        <button id="btnCopyLink" class="ghost">링크 복사</button>
+        <button id="btnOpenViewer" class="primary">저장 페이지 열기</button>
+        <button id="btnSaveQR" class="ghost">QR 이미지 저장</button>
+        <button id="btnCloseQR" class="text">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <aside class="drawer" id="gallery" hidden>
+    <div class="drawer-head">
+      <h3>운영자 갤러리</h3>
+      <button id="btnCloseGallery" class="text">닫기</button>
+    </div>
+    <div class="drawer-body" id="galleryGrid"></div>
+  </aside>
+
+  <canvas id="hiddenCanvas" hidden></canvas>
+
+  <script>
+    document.getElementById('qrModal').addEventListener('click', (e)=>{
+      if (e.target === e.currentTarget) e.currentTarget.hidden = true;
+    });
+  </script>
+</body>
+</html>
