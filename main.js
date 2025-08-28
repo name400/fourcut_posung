@@ -19,8 +19,9 @@ const btnGallery = $('#btnGallery');
 const gallery = $('#gallery');
 const btnCloseGallery = $('#btnCloseGallery');
 const busyEl = $('#busy');
+const backdrop = document.getElementById('backdrop');
 
-/* ---------- idb-keyval 가드 (로컬스토리지 폴백) ---------- */
+/* idb-keyval 가드 (로컬스토리지 폴백) */
 const idb = (window.idbKeyval && typeof window.idbKeyval.set === 'function') ? {
   set: window.idbKeyval.set,
   get: window.idbKeyval.get,
@@ -47,13 +48,13 @@ function setStep(n){
 async function startCamera(){
   try{
     if (stream) stopCamera();
-    // HTTPS 또는 localhost 권장 (file:// / http:// 환경에서 차단 가능)
+    // HTTPS 또는 localhost 권장
     stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing } });
     video.srcObject = stream;
     btnShot.disabled = false;
   }catch(e){
     console.error('getUserMedia error', e);
-    alert('카메라 접근 실패: ' + (e?.name || '') + ' ' + (e?.message || '보안 정책 때문에 차단됐을 수 있어요. HTTPS/localhost에서 실행하세요.'));
+    alert('카메라 접근 실패: ' + (e?.name || '') + ' ' + (e?.message || '보안 정책으로 차단됐을 수 있어요. HTTPS/localhost에서 실행하세요.'));
   }
 }
 function stopCamera(){
@@ -189,11 +190,11 @@ const qrLinkText = $('#qrLinkText');
 btnQR.onclick = async ()=>{
   if(!finalDataUrl) return;
   try{
-    // compress into hash param
-    const compressed = LZString.compressToEncodedURIComponent(finalDataUrl);
+    if (busyEl) busyEl.hidden = true; // 혹시 남아있으면 내림
 
-    // file://에서도 동작하도록 index.html 제거 후 붙이기
-    const base = location.href.replace(/index\\.html(?:\\?.*)?(?:#.*)?$/,'');
+    // file://에서도 안전한 해시 방식 URL
+    const compressed = LZString.compressToEncodedURIComponent(finalDataUrl);
+    const base = location.href.replace(/index\.html(?:\?.*)?(?:#.*)?$/,'');
     const viewerURL = base + 'viewer.html#img=' + compressed;
 
     lastQRLink = viewerURL;
@@ -203,6 +204,7 @@ btnQR.onclick = async ()=>{
   }catch(e){
     console.error('QR generate error', e);
     alert('QR 생성 중 오류: ' + (e?.message || e));
+    qrModal.hidden = false;
   }
 };
 
@@ -220,11 +222,58 @@ btnCopyLink.onclick = async ()=>{
 };
 btnCloseQR.onclick = ()=>{ qrModal.hidden = true; };
 
-// operator gallery
+/* ===== Gallery: open/close with backdrop & gestures ===== */
+function closeGallerySmooth(){
+  gallery.classList.remove('open');
+  setTimeout(()=>{
+    gallery.hidden = true;
+    backdrop.hidden = true;
+  }, 250); // match CSS transition
+}
+
 btnGallery.onclick = async ()=>{
-  gallery.hidden = false; await renderGallery();
+  await renderGallery();
+  gallery.hidden = false;
+  // force reflow for transition
+  // eslint-disable-next-line no-unused-expressions
+  gallery.offsetHeight;
+  gallery.classList.add('open');
+  backdrop.hidden = false;
 };
-btnCloseGallery.onclick = ()=> gallery.hidden = true;
+
+btnCloseGallery.onclick = closeGallerySmooth;
+backdrop.onclick = closeGallerySmooth;
+
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'Escape' && !gallery.hidden) closeGallerySmooth();
+});
+
+// Swipe to close (mobile)
+let startX = null;
+gallery.addEventListener('touchstart', (e)=>{
+  startX = e.touches[0].clientX;
+}, {passive:true});
+
+gallery.addEventListener('touchmove', (e)=>{
+  if(startX===null) return;
+  const dx = e.touches[0].clientX - startX;
+  const shift = Math.max(0, Math.min(dx, 120));
+  gallery.style.transform = `translateX(${shift}px)`;
+}, {passive:true});
+
+gallery.addEventListener('touchend', (e)=>{
+  if(startX===null) return;
+  const endX = e.changedTouches[0].clientX;
+  const dx = endX - startX;
+  startX = null;
+  if(dx > 60){
+    gallery.style.transform = '';
+    closeGallerySmooth();
+  }else{
+    gallery.style.transform = '';
+    gallery.classList.add('open');
+  }
+});
 
 async function renderGallery(){
   const grid = $('#galleryGrid'); grid.innerHTML='';
