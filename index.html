@@ -5,15 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>네컷 부스 • Fourcut Booth</title>
   <meta name="theme-color" content="#0b0c10" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="./style.css?v=delbtn1" />
 
   <!-- 라이브러리 -->
   <script defer src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js"></script>
-  <!-- QR 라이브러리: 있으면 사용, 없으면 main.js에서 이미지 폴백 사용 -->
   <script defer src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/idb-keyval.iife.min.js"></script>
 
@@ -25,7 +21,7 @@
       <img src="posung.png" alt="로고" class="logo" />
       <span>2025 보성제</span>
     </div>
-    <nav class="steps" id="stepper">
+    <nav class="steps">
       <span class="step active">1 촬영</span><span class="sep">›</span>
       <span class="step">2 선택</span><span class="sep">›</span>
       <span class="step">3 프레임</span><span class="sep">›</span>
@@ -87,8 +83,6 @@
         <button id="btnSave" class="ghost" disabled>기기 저장</button>
         <button id="btnQR" class="accent" disabled>QR 만들기</button>
       </div>
-
-      <div class="tiny-hint">※ iOS Safari는 저장 시 새 탭에 열릴 수 있어요. 길게 눌러 “사진 저장”.</div>
     </section>
   </main>
 
@@ -96,7 +90,7 @@
   <div class="modal" id="qrModal" hidden>
     <div class="modal-card">
       <h3>QR로 공유</h3>
-      <canvas id="qrCanvas" width="260" height="260" aria-label="QR code"></canvas>
+      <canvas id="qrCanvas" width="260" height="260"></canvas>
       <img id="qrImg" width="260" height="260" hidden alt="QR 코드" />
       <div class="qr-link" id="qrLinkText"></div>
       <div class="qr-actions">
@@ -112,7 +106,7 @@
   <aside class="drawer" id="gallery" hidden>
     <div class="drawer-head">
       <h3>갤러리</h3>
-      <div style="display:flex;gap:8px">
+      <div>
         <button id="btnWipeGallery" class="ghost">전체 삭제</button>
         <button id="btnCloseGallery" class="text">닫기</button>
       </div>
@@ -122,12 +116,5 @@
 
   <div id="backdrop" class="backdrop" hidden></div>
   <canvas id="hiddenCanvas" hidden></canvas>
-
-  <script>
-    // 모달 바깥 터치로 닫기
-    document.getElementById('qrModal').addEventListener('click', (e)=>{
-      if (e.target === e.currentTarget) e.currentTarget.hidden = true;
-    });
-  </script>
 </body>
 </html>
