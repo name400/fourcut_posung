@@ -13,7 +13,7 @@
   <!-- 라이브러리 -->
   <script defer src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js"></script>
-  <!-- QR 라이브러리: 있으면 사용, 없으면 main.js가 이미지 폴백 사용 -->
+  <!-- QR 라이브러리: 있으면 사용, 없으면 main.js에서 이미지 폴백 사용 -->
   <script defer src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/idb-keyval.iife.min.js"></script>
 
@@ -120,12 +120,11 @@
     <div class="drawer-body" id="galleryGrid"></div>
   </aside>
 
-  <!-- 배경/유틸 -->
   <div id="backdrop" class="backdrop" hidden></div>
   <canvas id="hiddenCanvas" hidden></canvas>
 
-  <!-- 모달 바깥 클릭 닫기 -->
   <script>
+    // 모달 바깥 터치로 닫기
     document.getElementById('qrModal').addEventListener('click', (e)=>{
       if (e.target === e.currentTarget) e.currentTarget.hidden = true;
     });
