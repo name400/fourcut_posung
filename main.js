@@ -79,7 +79,7 @@ function renderPreview(){
     const cell = document.createElement('div');
     cell.className = 'cell';
     const img = document.createElement('img');
-    img.src = shots[i]; // dataURL (same-origin)
+    img.src = shots[i];
     cell.appendChild(img);
     finalGrid.appendChild(cell);
   });
@@ -102,22 +102,20 @@ async function startCamera(){
 
     stream = await navigator.mediaDevices.getUserMedia(constraints);
     video.srcObject = stream;
+
+    // ✅ videoWidth / videoHeight 보장 위해 metadata 로드 대기
+    await new Promise(resolve=>{
+      video.onloadedmetadata = ()=> resolve();
+    });
+
     btnShot.disabled = false;
   }catch(e){
     console.error('getUserMedia error', e);
     let msg = '카메라 접근 실패';
     if (e.name === 'NotAllowedError' || e.name === 'SecurityError') {
-      msg = [
-        '카메라 권한이 차단되어 있어요.',
-        '1) 인앱 브라우저 말고 Chrome/Safari로 열기',
-        '2) 주소창 자물쇠 → 사이트 설정 → 카메라 허용',
-        '3) 시크릿/비공개 모드 OFF',
-        '4) OS 앱 권한에서 해당 브라우저의 카메라 허용'
-      ].join('\n');
-    } else if (e.name === 'NotFoundError' || e.name === 'OverconstrainedError') {
-      msg = '사용 가능한 카메라를 찾지 못했어요. 카메라 전환 버튼을 눌러보거나 다른 브라우저/기기를 사용해 보세요.';
+      msg = '카메라 권한이 차단되어 있습니다. 브라우저/OS 권한을 확인하세요.';
     } else if (!window.isSecureContext) {
-      msg = 'HTTPS(또는 localhost)가 아니면 카메라를 쓸 수 없어요. GitHub Pages/HTTPS에서 접속해 주세요.';
+      msg = 'HTTPS(또는 localhost)가 아니면 카메라 사용 불가합니다.';
     } else {
       msg = `${msg}: ${e.name} ${e.message || ''}`;
     }
@@ -145,17 +143,18 @@ btnReset.onclick = ()=>{
   updateCounter();
 };
 
-/* ====== 캡처 (수정된 부분) ====== */
+/* ====== 캡처 (데스크탑 fix 적용) ====== */
 btnShot.onclick = ()=>{
   if(!stream) return;
   if(shots.length >= 6) return;
 
-  const track = stream.getVideoTracks()[0];
-  const s = track.getSettings();
+  if(!video.videoWidth || !video.videoHeight){
+    alert("카메라 초기화 중입니다. 잠시 후 다시 시도하세요.");
+    return;
+  }
 
-  // 기기 해상도/비율을 그대로 사용
-  const w = video.videoWidth || s.width || 960;
-  const h = video.videoHeight || s.height || 720;
+  const w = video.videoWidth;
+  const h = video.videoHeight;
 
   hiddenCanvas.width = w;
   hiddenCanvas.height = h;
@@ -163,7 +162,7 @@ btnShot.onclick = ()=>{
   const ctx = hiddenCanvas.getContext('2d');
   ctx.drawImage(video, 0, 0, w, h);
 
-  const dataUrl = hiddenCanvas.toDataURL('image/jpeg', 0.85);
+  const dataUrl = hiddenCanvas.toDataURL('image/jpeg', 0.9);
   shots.push(dataUrl);
 
   updateCounter();
@@ -188,7 +187,7 @@ captionInput.addEventListener('input', ()=> renderPreview());
 btnMake.onclick = async ()=>{
   if(selected.size!==4) return alert('4장을 선택하세요');
   if(!window.htmlToImage){
-    alert('이미지 생성 모듈이 로드되지 않았습니다. 네트워크를 확인하고 새로고침 해주세요.');
+    alert('이미지 생성 모듈이 로드되지 않았습니다.');
     return;
   }
 
@@ -204,9 +203,7 @@ btnMake.onclick = async ()=>{
     const width = Math.round(rect.width);
     const height = Math.round(rect.height);
 
-    const filter = (node) => {
-      return !(node.id === 'busy' || node.classList?.contains('busy'));
-    };
+    const filter = (node) => !(node.id === 'busy' || node.classList?.contains('busy'));
 
     const options = {
       quality: 0.85,
@@ -216,7 +213,6 @@ btnMake.onclick = async ()=>{
       canvasHeight: height,
       pixelRatio: 1,
       cacheBust: true,
-      imagePlaceholder: '',
       filter
     };
 
@@ -321,10 +317,9 @@ async function renderGallery(){
     const img = document.createElement('img');
     img.src = it.image; img.title = new Date(it.createdAt).toLocaleString();
 
-    // 삭제 버튼 추가
     const del = document.createElement('button');
     del.className = 'del';
-    del.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="white" d="M18.3 5.71L12 12l6.3 6.29-1.42 1.42L12 13.41l-6.29 6.3-1.42-1.42L10.59 12 4.29 5.71 5.71 4.29 12 10.59l6.29-6.3z"/></svg>';
+    del.innerHTML = '×';
     del.onclick = async ()=>{
       if(!confirm('이 이미지를 삭제할까요?')) return;
       localStorage.removeItem(`photo:${it.id}`);
