@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./style.css" />
-  <!--라이브러리-->
+
   <script defer src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
@@ -19,7 +19,8 @@
 <body>
   <header class="topbar">
     <div class="brand">
-      <div class="dot"></div><span>2026 보성제</span>
+      <img src="posung.png" alt="로고" class="logo" />
+      <span>2026 보성제</span>
     </div>
     <nav class="steps" id="stepper">
       <span class="step active">1 촬영</span>
@@ -86,7 +87,6 @@
         <button id="btnQR" class="accent" disabled>QR 만들기</button>
       </div>
 
-      <div class="tiny-hint">※ iOS Safari는 저장 시 이미지가 새 탭에 열릴 수 있어요. 길게 눌러 "사진 저장" 하세요.</div>
     </section>
   </main>
 
@@ -106,7 +106,7 @@
 
   <aside class="drawer" id="gallery" hidden>
     <div class="drawer-head">
-      <h3>운영자 갤러리</h3>
+      <h3>갤러리</h3>
       <button id="btnCloseGallery" class="text">닫기</button>
     </div>
     <div class="drawer-body" id="galleryGrid"></div>
