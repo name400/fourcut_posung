@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./style.css" />
-
+  <!-- Libraries -->
   <script defer src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
@@ -39,6 +39,7 @@
   </header>
 
   <main class="container">
+    <!-- Left -->
     <section class="panel">
       <div class="card cam">
         <video id="video" autoplay playsinline></video>
@@ -59,6 +60,7 @@
       </div>
     </section>
 
+    <!-- Right -->
     <section class="panel">
       <div class="card frame-picker">
         <div class="frame-pills">
@@ -90,6 +92,7 @@
     </section>
   </main>
 
+  <!-- QR Modal -->
   <div class="modal" id="qrModal" hidden>
     <div class="modal-card">
       <h3>QR로 공유</h3>
@@ -104,17 +107,22 @@
     </div>
   </div>
 
+  <!-- Gallery Drawer -->
   <aside class="drawer" id="gallery" hidden>
     <div class="drawer-head">
-      <h3>갤러리</h3>
+      <h3>운영자 갤러리</h3>
       <button id="btnCloseGallery" class="text">닫기</button>
     </div>
     <div class="drawer-body" id="galleryGrid"></div>
   </aside>
 
+  <!-- Backdrop for gallery -->
+  <div id="backdrop" class="backdrop" hidden></div>
+
   <canvas id="hiddenCanvas" hidden></canvas>
 
   <script>
+    // 모달 바깥 클릭으로 닫기
     document.getElementById('qrModal').addEventListener('click', (e)=>{
       if (e.target === e.currentTarget) e.currentTarget.hidden = true;
     });
