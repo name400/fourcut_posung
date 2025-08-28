@@ -4,9 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>네컷 저장 • Fourcut Viewer</title>
-  <!-- 기존 스타일 재사용 -->
   <link rel="stylesheet" href="./style.css" />
-  <!-- 압축 해제 라이브러리 -->
   <script defer src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
 </head>
 <body>
@@ -15,53 +13,37 @@
       <div class="card preview">
         <img id="img" alt="fourcut" style="max-width:100%;border-radius:16px;border:1px solid #1f2330"/>
       </div>
-
       <div class="actions">
         <button id="btnSave" class="primary">이미지 저장</button>
         <button id="btnOpenRaw" class="ghost">새 탭에서 열기</button>
         <a href="./index.html" class="text" style="text-decoration:none"><button class="text">처음으로</button></a>
       </div>
-
-      <div class="tiny-hint">
-        iOS 사파리: <b>새 탭에서 열기</b> → 이미지 길게 눌러 <b>“사진 저장”</b>을 선택하세요.
-      </div>
+      <div class="tiny-hint">iOS: 새 탭에서 열어 길게 눌러 “사진 저장”.</div>
     </section>
   </main>
 
   <script>
-    // 해시에서 데이터 꺼내기
     const raw = location.hash.replace(/^#img=/,'');
     const fail = (msg) => {
       document.body.innerHTML =
-        `<div style="padding:24px"><b>이미지 데이터를 불러오지 못했습니다.</b><br>${msg || ''}</div>`;
+        `<div style="padding:24px"><b>이미지를 불러오지 못했습니다.</b><br>${msg || ''}</div>`;
     };
-
-    if (!raw) {
-      fail('해시가 없습니다.');
-    } else if (!window.LZString) {
-      fail('라이브러리 로드 실패(LZString). 네트워크 확인 후 새로고침 해주세요.');
-    } else {
+    if (!raw) { fail('해시가 없습니다.'); }
+    else if (!window.LZString) { fail('LZString 로드 실패. 네트워크 확인 후 새로고침.'); }
+    else {
       try {
         const dataUrl = LZString.decompressFromEncodedURIComponent(raw);
         if (!dataUrl || !/^data:image\//.test(dataUrl)) throw new Error('잘못된 데이터');
-        const img = document.getElementById('img');
-        img.src = dataUrl;
+        const img = document.getElementById('img'); img.src = dataUrl;
 
-        // 저장 버튼: 파일명에 picrep 접두사
         document.getElementById('btnSave').onclick = ()=>{
           const a = document.createElement('a');
-          a.href = dataUrl;
-          a.download = 'picrep/fourcut.jpg';   // 브라우저는 실제 폴더를 만들지 않지만 파일명에 접두사 표시됨
-          a.click();
+          a.href = dataUrl; a.download = 'picrep/fourcut.jpg'; a.click();
         };
-
-        // 새 탭에서 원본 열기 (iOS 저장용)
         document.getElementById('btnOpenRaw').onclick = ()=>{
           window.open(dataUrl, '_blank', 'noopener,noreferrer');
         };
-      } catch (e) {
-        fail('디코딩 오류: ' + (e?.message || e));
-      }
+      } catch (e) { fail('디코딩 오류: ' + (e?.message || e)); }
     }
   </script>
 </body>
