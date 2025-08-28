@@ -84,17 +84,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-famil
 .drawer-body{padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;overflow:auto}
 .drawer-body img{width:100%;border-radius:12px;border:1px solid #2b3146;display:block}
 
-/* 개별 삭제 버튼 (빨간 배경, 흰 X) */
+/* --- 개별 삭제 버튼 (SVG) --- */
 .g-item{ position:relative; }
 .g-item .del{
-  position:absolute; top:8px; right:8px; z-index:5;
-  background:#e53935; color:#fff; border:1px solid #ffffff66;
-  border-radius:999px; width:28px; height:28px; display:grid; place-items:center;
-  font-weight:800; font-size:16px; line-height:1; box-shadow:0 2px 6px #0006; cursor:pointer;
+  position:absolute; top:6px; right:6px; z-index:5;
+  background:#e53935; border:none; border-radius:50%;
+  width:26px; height:26px;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; box-shadow:0 2px 6px #0006;
 }
-.g-item .del:active{ transform:scale(0.92); }
+.g-item .del svg{width:14px; height:14px; pointer-events:none}
+.g-item .del:active{ transform:scale(0.9); }
 
-/* Backdrop (갤러리 뒤 어둡게) */
+/* Backdrop */
 .backdrop{position:fixed;inset:0;background:#0008;z-index:8999}
 .backdrop[hidden]{display:none!important}
 
