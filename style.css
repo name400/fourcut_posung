@@ -33,14 +33,19 @@ html,body{
 .brand{
   display:flex;
   align-items:center;
-  gap:10px;
+  gap:12px;
   font-weight:700
 }
 .brand .logo{
-  width:64px;   /* ⬅ 로고 크기 키움 */
+  width:64px;   /* ⬆ 로고 크게 */
   height:64px;
   object-fit:contain;
-  border-radius:12px; /* 원형으로 하고 싶으면 50% */
+  border-radius:12px; /* 원형 원하면 50% */
+}
+.brand span{
+  font-size:28px;  /* ⬆ 글씨 크게 */
+  font-weight:700;
+  line-height:1.2;
 }
 .steps{
   display:flex;
