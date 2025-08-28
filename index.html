@@ -5,12 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>네컷 부스 • Fourcut Booth</title>
   <meta name="theme-color" content="#0b0c10" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./style.css" />
+
   <!-- 라이브러리 -->
   <script defer src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js"></script>
+  <!-- QR 라이브러리: 있으면 사용, 없으면 main.js가 이미지 폴백 사용 -->
   <script defer src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/idb-keyval.iife.min.js"></script>
+
   <script defer src="./main.js"></script>
 </head>
 <body>
@@ -33,7 +39,7 @@
   </header>
 
   <main class="container">
-    <!-- Left -->
+    <!-- 왼쪽 -->
     <section class="panel">
       <div class="card cam">
         <video id="video" autoplay playsinline></video>
@@ -47,13 +53,14 @@
           </div>
         </div>
       </div>
+
       <div class="card thumbs">
         <div class="thumb-grid" id="thumbGrid"></div>
         <div class="hint">썸네일을 눌러 <b>4장</b> 선택하세요</div>
       </div>
     </section>
 
-    <!-- Right -->
+    <!-- 오른쪽 -->
     <section class="panel">
       <div class="card frame-picker">
         <div class="frame-pills">
@@ -80,14 +87,16 @@
         <button id="btnSave" class="ghost" disabled>기기 저장</button>
         <button id="btnQR" class="accent" disabled>QR 만들기</button>
       </div>
+
+      <div class="tiny-hint">※ iOS Safari는 저장 시 새 탭에 열릴 수 있어요. 길게 눌러 “사진 저장”.</div>
     </section>
   </main>
 
-  <!-- QR Modal -->
+  <!-- QR 모달 -->
   <div class="modal" id="qrModal" hidden>
     <div class="modal-card">
       <h3>QR로 공유</h3>
-      <canvas id="qrCanvas" width="260" height="260"></canvas>
+      <canvas id="qrCanvas" width="260" height="260" aria-label="QR code"></canvas>
       <img id="qrImg" width="260" height="260" hidden alt="QR 코드" />
       <div class="qr-link" id="qrLinkText"></div>
       <div class="qr-actions">
@@ -99,7 +108,7 @@
     </div>
   </div>
 
-  <!-- Gallery -->
+  <!-- 갤러리 -->
   <aside class="drawer" id="gallery" hidden>
     <div class="drawer-head">
       <h3>갤러리</h3>
@@ -111,7 +120,15 @@
     <div class="drawer-body" id="galleryGrid"></div>
   </aside>
 
+  <!-- 배경/유틸 -->
   <div id="backdrop" class="backdrop" hidden></div>
   <canvas id="hiddenCanvas" hidden></canvas>
+
+  <!-- 모달 바깥 클릭 닫기 -->
+  <script>
+    document.getElementById('qrModal').addEventListener('click', (e)=>{
+      if (e.target === e.currentTarget) e.currentTarget.hidden = true;
+    });
+  </script>
 </body>
 </html>
