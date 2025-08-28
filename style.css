@@ -100,6 +100,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-famil
 .backdrop{position:fixed;inset:0;background:#0008;z-index:8999}
 .backdrop[hidden]{display:none!important}
 
+/* Actions / hints */
+.actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.tiny-hint{color:#94a0b8;font-size:12px;text-align:center}
+
 /* ---------- Responsive ---------- */
 @media (max-width:1100px){
   .container{grid-template-columns:1fr;max-width:760px}
