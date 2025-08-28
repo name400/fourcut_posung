@@ -23,9 +23,7 @@ const backdrop = document.getElementById('backdrop');
 
 /* idb-keyval 가드 (로컬스토리지 폴백) */
 const idb = (window.idbKeyval && typeof window.idbKeyval.set === 'function') ? {
-  set: window.idbKeyval.set,
-  get: window.idbKeyval.get,
-  keys: window.idbKeyval.keys
+  set: window.idbKeyval.set, get: window.idbKeyval.get, keys: window.idbKeyval.keys
 } : {
   set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch(_) {} return Promise.resolve(); },
   get: async (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch(_) { return null; } },
@@ -57,10 +55,7 @@ async function startCamera(){
     alert('카메라 접근 실패: ' + (e?.name || '') + ' ' + (e?.message || '보안 정책으로 차단됐을 수 있어요. HTTPS/localhost에서 실행하세요.'));
   }
 }
-function stopCamera(){
-  try{ stream?.getTracks()?.forEach(t=>t.stop()); }catch{}
-  stream = null;
-}
+function stopCamera(){ try{ stream?.getTracks()?.forEach(t=>t.stop()); }catch{} stream = null; }
 
 function updateCounter(){
   shotCounter.textContent = `${shots.length} / 6`;
@@ -75,8 +70,7 @@ function renderThumbs(){
     d.onclick = ()=>{
       if(selected.has(idx)) selected.delete(idx);
       else if(selected.size < 4) selected.add(idx);
-      renderThumbs();
-      renderPreview();
+      renderThumbs(); renderPreview();
       btnMake.disabled = !(selected.size===4);
       if(selected.size===4) setStep(3);
     };
@@ -101,38 +95,24 @@ function renderPreview(){
 }
 
 btnStart.onclick = startCamera;
-btnFlip.onclick = async ()=>{
-  facing = (facing === 'user') ? 'environment' : 'user';
-  await startCamera();
-};
+btnFlip.onclick = async ()=>{ facing = (facing === 'user') ? 'environment' : 'user'; await startCamera(); };
 btnReset.onclick = ()=>{
-  shots = [];
-  selected = new Set();
-  finalDataUrl = null;
-  lastQRLink = null;
-  btnMake.disabled = true;
-  btnSave.disabled = true;
-  btnQR.disabled = true;
-  renderThumbs();
-  renderPreview();
-  updateCounter();
+  shots = []; selected = new Set(); finalDataUrl = null; lastQRLink = null;
+  btnMake.disabled = true; btnSave.disabled = true; btnQR.disabled = true;
+  renderThumbs(); renderPreview(); updateCounter();
 };
 
 btnShot.onclick = ()=>{
-  if(!stream) return;
-  if(shots.length >= 6) return;
+  if(!stream || shots.length >= 6) return;
   const track = stream.getVideoTracks()[0];
-  const settings = track.getSettings();
-  const w = Math.min(960, settings.width || 960);
-  const h = Math.min(1280, settings.height || 1280);
+  const s = track.getSettings();
+  const w = Math.min(960, s.width || 960);
+  const h = Math.min(1280, s.height || 1280);
   hiddenCanvas.width = w; hiddenCanvas.height = h;
-  const ctx = hiddenCanvas.getContext('2d');
-  ctx.drawImage(video, 0, 0, w, h);
+  hiddenCanvas.getContext('2d').drawImage(video, 0, 0, w, h);
   const dataUrl = hiddenCanvas.toDataURL('image/jpeg', 0.75);
-  shots.push(dataUrl);
-  updateCounter();
-  renderThumbs();
-  if(shots.length===6){ btnShot.disabled = true; }
+  shots.push(dataUrl); updateCounter(); renderThumbs();
+  if(shots.length===6) btnShot.disabled = true;
 };
 
 // frame pills
@@ -142,34 +122,25 @@ $$('.pill').forEach(p=>{
     p.classList.add('selected');
     fourcut.classList.remove('classic','black','polaroid');
     fourcut.classList.add(p.dataset.frame);
-    renderPreview();
-    setStep(3);
+    renderPreview(); setStep(3);
   };
 });
-
 captionInput.addEventListener('input', ()=> renderPreview());
 
 btnMake.onclick = async ()=>{
   if(selected.size!==4) return alert('4장을 선택하세요');
   if(!window.htmlToImage){ alert('스크립트 로드 지연: 새로고침 해주세요.'); return; }
-  setStep(4);
-  busyEl.hidden = false;
+  setStep(4); busyEl.hidden = false;
   try{
-    // downscale for QR safety
     const dataUrl = await htmlToImage.toJpeg(fourcut, { quality: 0.75, canvasWidth: 720 });
     finalDataUrl = dataUrl;
-    btnSave.disabled = false;
-    btnQR.disabled = false;
-
-    // save to operator gallery (IndexedDB/localStorage fallback)
+    btnSave.disabled = false; btnQR.disabled = false;
     const id = crypto.randomUUID();
     await idbSet(`photo:${id}`, { id, createdAt: Date.now(), image: finalDataUrl });
   }catch(e){
     console.error('make fourcut error', e);
     alert('이미지 생성 실패: ' + (e?.message || e));
-  }finally{
-    busyEl.hidden = true;
-  }
+  }finally{ busyEl.hidden = true; }
 };
 
 btnSave.onclick = ()=>{
@@ -190,12 +161,11 @@ const qrLinkText = $('#qrLinkText');
 btnQR.onclick = async ()=>{
   if(!finalDataUrl) return;
   try{
-    if (busyEl) busyEl.hidden = true; // 혹시 남아있으면 내림
+    if (busyEl) busyEl.hidden = true;
 
-    // file://에서도 안전한 해시 방식 URL
     const compressed = LZString.compressToEncodedURIComponent(finalDataUrl);
-    const base = location.href.replace(/index\.html(?:\?.*)?(?:#.*)?$/,'');
-    const viewerURL = base + 'viewer.html#img=' + compressed;
+    // ✅ GitHub Pages 서브경로 / 로컬 / 파일스킴 모두 안전
+    const viewerURL = new URL('viewer.html', location.href).toString() + '#img=' + compressed;
 
     lastQRLink = viewerURL;
     qrModal.hidden = false;
@@ -216,8 +186,7 @@ btnSaveQR.onclick = ()=>{
 btnCopyLink.onclick = async ()=>{
   try{
     await navigator.clipboard.writeText(lastQRLink || '');
-    btnCopyLink.textContent = '복사됨!';
-    setTimeout(()=> btnCopyLink.textContent = '링크 복사', 1200);
+    btnCopyLink.textContent = '복사됨!'; setTimeout(()=> btnCopyLink.textContent = '링크 복사', 1200);
   }catch{}
 };
 btnCloseQR.onclick = ()=>{ qrModal.hidden = true; };
@@ -225,60 +194,38 @@ btnCloseQR.onclick = ()=>{ qrModal.hidden = true; };
 /* ===== Gallery: open/close with backdrop & gestures ===== */
 function closeGallerySmooth(){
   gallery.classList.remove('open');
-  setTimeout(()=>{
-    gallery.hidden = true;
-    backdrop.hidden = true;
-  }, 250); // match CSS transition
+  setTimeout(()=>{ gallery.hidden = true; backdrop.hidden = true; }, 250);
 }
-
 btnGallery.onclick = async ()=>{
   await renderGallery();
   gallery.hidden = false;
-  // force reflow for transition
-  // eslint-disable-next-line no-unused-expressions
-  gallery.offsetHeight;
+  gallery.offsetHeight; // force reflow
   gallery.classList.add('open');
   backdrop.hidden = false;
 };
-
 btnCloseGallery.onclick = closeGallerySmooth;
 backdrop.onclick = closeGallerySmooth;
-
-document.addEventListener('keydown', (e)=>{
-  if(e.key === 'Escape' && !gallery.hidden) closeGallerySmooth();
-});
+document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape' && !gallery.hidden) closeGallerySmooth(); });
 
 // Swipe to close (mobile)
 let startX = null;
-gallery.addEventListener('touchstart', (e)=>{
-  startX = e.touches[0].clientX;
-}, {passive:true});
-
+gallery.addEventListener('touchstart', (e)=>{ startX = e.touches[0].clientX; }, {passive:true});
 gallery.addEventListener('touchmove', (e)=>{
   if(startX===null) return;
   const dx = e.touches[0].clientX - startX;
   const shift = Math.max(0, Math.min(dx, 120));
   gallery.style.transform = `translateX(${shift}px)`;
 }, {passive:true});
-
 gallery.addEventListener('touchend', (e)=>{
   if(startX===null) return;
-  const endX = e.changedTouches[0].clientX;
-  const dx = endX - startX;
-  startX = null;
-  if(dx > 60){
-    gallery.style.transform = '';
-    closeGallerySmooth();
-  }else{
-    gallery.style.transform = '';
-    gallery.classList.add('open');
-  }
+  const endX = e.changedTouches[0].clientX; const dx = endX - startX; startX = null;
+  if(dx > 60){ gallery.style.transform=''; closeGallerySmooth(); }
+  else{ gallery.style.transform=''; gallery.classList.add('open'); }
 });
 
 async function renderGallery(){
   const grid = $('#galleryGrid'); grid.innerHTML='';
-  const keys = await idbKeys();
-  const items = [];
+  const keys = await idbKeys(); const items = [];
   for(const k of keys){ if(String(k).startsWith('photo:')) items.push(await idbGet(k)); }
   items.sort((a,b)=>b.createdAt-a.createdAt);
   for(const it of items){
