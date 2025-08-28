@@ -45,14 +45,14 @@ let shots = [];
 let selected = new Set();
 let finalDataUrl = null;
 let lastQRLink = null;
-let facing = 'user'; // 'environment' for rear
+let facing = 'user';
 
 /* ===== utils ===== */
 function setStep(n){ [...$$('.step')].forEach((el,i)=> el.classList.toggle('active', i===n-1)); }
 function updateCounter(){ shotCounter.textContent = `${shots.length} / 6`; setStep(shots.length === 6 ? 2 : 1); }
 function hideBusyHard(){ if(!busyEl) return; busyEl.hidden = true; busyEl.style.display='none'; requestAnimationFrame(()=>busyEl.style.display=''); }
 
-/* ===== thumbs/preview ===== */
+/* ===== thumbs / preview ===== */
 function renderThumbs(){
   thumbGrid.innerHTML = '';
   shots.forEach((src, idx)=>{
@@ -105,7 +105,7 @@ async function startCamera(){
       msg = '카메라를 찾지 못했어요. 전/후면 전환 또는 다른 브라우저를 사용해 보세요.';
     } else if (!window.isSecureContext) {
       msg = 'HTTPS(또는 localhost)가 아니면 카메라 사용 불가';
-    } else { msg = `${msg}: ${e.name} ${e.message || ''}`; }
+    } else { msg = `${e.name} ${e.message || ''}`; }
     alert(msg);
   }
 }
@@ -154,16 +154,13 @@ btnMake.onclick = async ()=>{
     if (document.fonts && document.fonts.ready) {
       try { await Promise.race([document.fonts.ready, new Promise((_,rej)=>setTimeout(()=>rej(),3000))]); } catch {}
     }
-
     const r = fourcut.getBoundingClientRect();
     const width = Math.round(r.width), height = Math.round(r.height);
-
     const dataUrl = await htmlToImage.toJpeg(fourcut, {
       quality: 0.85, width, height, canvasWidth: width, canvasHeight: height,
       pixelRatio: 1, cacheBust: true,
       filter: (node)=>!(node.id==='busy' || node.classList?.contains('busy'))
     });
-
     finalDataUrl = dataUrl;
     hideBusyHard();
     btnSave.disabled = false; btnQR.disabled = false;
@@ -240,7 +237,7 @@ btnCopyLink.onclick = async ()=>{ try{
 } catch{} };
 btnCloseQR.onclick = ()=>{ qrModal.hidden = true; };
 
-/* ===== gallery ===== */
+/* ===== Gallery ===== */
 function closeGallery(){ gallery.hidden = true; backdrop.hidden = true; }
 btnGallery.onclick = async ()=>{ await renderGallery(); gallery.hidden = false; backdrop.hidden = false; };
 btnCloseGallery.onclick = closeGallery;
@@ -253,19 +250,32 @@ async function renderGallery(){
   const items = [];
   for(const k of keys){ if(String(k).startsWith('photo:')) items.push(await idbGet(k)); }
   items.sort((a,b)=>b.createdAt-a.createdAt);
+
   for(const it of items){
-    const wrap = document.createElement('div'); wrap.className = 'g-item';
-    const img = document.createElement('img'); img.src = it.image; img.title = new Date(it.createdAt).toLocaleString();
-    const del = document.createElement('button'); del.className = 'del'; del.textContent = '삭제';
+    const wrap = document.createElement('div');
+    wrap.className = 'g-item';
+
+    const img = document.createElement('img');
+    img.src = it.image;
+    img.title = new Date(it.createdAt).toLocaleString();
+
+    // 🔴 빨간 X 삭제 버튼
+    const del = document.createElement('button');
+    del.className = 'del';
+    del.setAttribute('aria-label','삭제');
+    del.textContent = '✕';
     del.onclick = async (e)=>{
       e.stopPropagation();
       if(!confirm('이 사진을 삭제할까요?')) return;
       await idbDel(`photo:${it.id}`);
       wrap.remove();
     };
-    wrap.append(img, del); grid.appendChild(wrap);
+
+    wrap.append(img, del);
+    grid.appendChild(wrap);
   }
 }
+
 btnWipeGallery.onclick = async ()=>{
   if(!confirm('갤러리의 모든 항목을 삭제할까요?')) return;
   const keys = await idbKeys();
@@ -274,5 +284,5 @@ btnWipeGallery.onclick = async ()=>{
   alert('삭제 완료');
 };
 
-/* ===== init ===== */
+/* init */
 updateCounter();
