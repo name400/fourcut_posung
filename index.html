@@ -10,13 +10,13 @@
   <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./style.css" />
 
-  <!-- ===== 라이브러리들 ===== -->
+  <!-- 필수 라이브러리 -->
   <script defer src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js"></script>
+  <!-- QRCode: 있으면 사용, 없으면 main.js에서 이미지 폴백 사용 -->
   <script defer src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/idb-keyval.iife.min.js"></script>
 
-  <!-- 메인 스크립트 -->
   <script defer src="./main.js"></script>
 </head>
 <body>
@@ -39,7 +39,7 @@
   </header>
 
   <main class="container">
-    <!-- 왼쪽 -->
+    <!-- Left -->
     <section class="panel">
       <div class="card cam">
         <video id="video" autoplay playsinline></video>
@@ -60,7 +60,7 @@
       </div>
     </section>
 
-    <!-- 오른쪽 -->
+    <!-- Right -->
     <section class="panel">
       <div class="card frame-picker">
         <div class="frame-pills">
@@ -88,17 +88,16 @@
         <button id="btnQR" class="accent" disabled>QR 만들기</button>
       </div>
 
-      <div class="tiny-hint">
-        ※ iOS Safari는 저장 시 이미지가 새 탭에 열릴 수 있어요. 길게 눌러 "사진 저장" 하세요.
-      </div>
+      <div class="tiny-hint">※ iOS는 저장 시 새 탭이 열릴 수 있어요. 길게 눌러 “사진 저장”.</div>
     </section>
   </main>
 
-  <!-- QR 모달 -->
+  <!-- QR Modal -->
   <div class="modal" id="qrModal" hidden>
     <div class="modal-card">
       <h3>QR로 공유</h3>
-      <canvas id="qrCanvas" width="260" height="260"></canvas>
+      <canvas id="qrCanvas" width="260" height="260" aria-label="QR code"></canvas>
+      <img id="qrImg" width="260" height="260" hidden alt="QR 코드" />
       <div class="qr-link" id="qrLinkText"></div>
       <div class="qr-actions">
         <button id="btnCopyLink" class="ghost">링크 복사</button>
@@ -109,11 +108,14 @@
     </div>
   </div>
 
-  <!-- 갤러리 -->
+  <!-- Gallery Drawer -->
   <aside class="drawer" id="gallery" hidden>
     <div class="drawer-head">
       <h3>갤러리</h3>
-      <button id="btnCloseGallery" class="text">닫기</button>
+      <div style="display:flex;gap:8px">
+        <button id="btnWipeGallery" class="ghost" title="모든 항목 삭제">전체 삭제</button>
+        <button id="btnCloseGallery" class="text">닫기</button>
+      </div>
     </div>
     <div class="drawer-body" id="galleryGrid"></div>
   </aside>
@@ -121,17 +123,12 @@
   <!-- Backdrop -->
   <div id="backdrop" class="backdrop" hidden></div>
 
-  <!-- 캡처용 숨김 canvas -->
   <canvas id="hiddenCanvas" hidden></canvas>
 
-  <!-- 필수 스크립트 로드 체크 -->
+  <!-- 모달: 바깥 클릭 시 닫기 -->
   <script>
-    window.addEventListener('load', ()=>{
-      const miss=[];
-      if(!window.htmlToImage) miss.push('html-to-image');
-      if(!window.LZString) miss.push('lz-string');
-      if(!window.QRCode) miss.push('qrcode');
-      if(miss.length) alert('필수 스크립트 로드 실패: ' + miss.join(', '));
+    document.getElementById('qrModal').addEventListener('click', (e)=>{
+      if (e.target === e.currentTarget) e.currentTarget.hidden = true;
     });
   </script>
 </body>
