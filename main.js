@@ -7,17 +7,28 @@ let shots=[];
 let selected=new Set();
 let finalDataUrl=null;
 let autoTimer=null;
+let currentFacing = "user"; // 기본 전면 카메라
 
 // 카메라 시작
 async function startCamera(){
   try{
     if(stream) stopCamera();
-    stream = await navigator.mediaDevices.getUserMedia({video:true,audio:false});
+    stream = await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode: { exact: currentFacing } }, audio:false
+    });
     const video=$("#video");
     video.srcObject=stream;
     video.onloadedmetadata=()=> video.play();
+
+    // 전면 카메라는 거울모드, 후면은 정상
+    if(currentFacing==="user") video.classList.add("mirror");
+    else video.classList.remove("mirror");
+
     $("#btnShot").disabled=false;
-  }catch(e){ alert("카메라 접근 실패"); }
+  }catch(e){ 
+    console.error(e);
+    alert("카메라 접근 실패 (브라우저/권한 확인)");
+  }
 }
 function stopCamera(){ stream?.getTracks().forEach(t=>t.stop()); stream=null; }
 
@@ -60,7 +71,14 @@ function doCapture(){
   const video=$("#video");
   const canvas=document.createElement("canvas");
   canvas.width=video.videoWidth; canvas.height=video.videoHeight;
-  canvas.getContext("2d").drawImage(video,0,0);
+  const ctx=canvas.getContext("2d");
+
+  if(currentFacing==="user"){ // 전면 카메라일 때 좌우반전해서 캡쳐
+    ctx.translate(canvas.width,0);
+    ctx.scale(-1,1);
+  }
+  ctx.drawImage(video,0,0,canvas.width,canvas.height);
+
   const dataUrl=canvas.toDataURL("image/jpeg",0.9);
   if(shots.length<6){ shots.push(dataUrl); renderThumbs(); updateCounter(); }
 }
@@ -161,4 +179,9 @@ $("#btnWipeGallery").onclick=()=>{ if(confirm("모두 삭제?")){ Object.keys(lo
 $("#backdrop").onclick=()=>{ $("#gallery").classList.remove("open"); setTimeout(()=>$("#gallery").hidden=true,250); $("#backdrop").hidden=true; };
 
 $("#btnReset").onclick=()=>{ shots=[];selected.clear();finalDataUrl=null;renderThumbs();renderPreview();updateCounter(); };
-$("#btnFlip").onclick=()=>{ alert("카메라 전환은 브라우저별 지원 필요"); };
+
+// 카메라 전환
+$("#btnFlip").onclick=async()=>{
+  currentFacing = (currentFacing==="user") ? "environment" : "user";
+  await startCamera();
+};
