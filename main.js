@@ -136,7 +136,7 @@ function setPolaroidColor(hex){
 
   // 밝기 기반 Busy 대비 조정
   const r = parseInt(h.substr(1,2),16), g = parseInt(h.substr(3,2),16), b = parseInt(h.substr(5,2),16);
-  const luminance = (0.2126*r + 0.7152*g + 0.0722*b)/255; // 0~1
+  const luminance = (0.2126*r + 0.7152*g + 0.0722*b)/255;
   if(luminance < 0.5){
     document.documentElement.style.setProperty('--busy-bg', '#00000099');
     document.documentElement.style.setProperty('--busy-fg', '#ffffff');
@@ -175,7 +175,7 @@ btnMake.onclick = async ()=>{
     if(document.fonts && document.fonts.ready){
       try{ await Promise.race([document.fonts.ready, new Promise((_,rej)=>setTimeout(()=>rej(new Error('fonts-timeout')),3000))]); }catch{}
     }
-    // 내부 이미지 로드 보장
+    // 내부 이미지(로고+4컷 사진) 로드 보장
     const imgs = Array.from(fourcut.querySelectorAll('img'));
     await Promise.all(imgs.map(img => (img.decode ? img.decode().catch(()=>waitImage(img)) : waitImage(img))));
 
@@ -201,8 +201,8 @@ btnMake.onclick = async ()=>{
     const map = { 'fonts-timeout':'폰트 로딩 지연', 'render-timeout':'렌더 지연(네트워크/메모리 문제)' };
     alert('이미지 생성 실패: ' + (map[e?.message] || e?.message || '알 수 없는 오류'));
   }finally{
-    busyEl.hidden = true;                 // 1차
-    setTimeout(()=> busyEl.hidden = true, 50); // 2차 보장
+    busyEl.hidden = true;
+    setTimeout(()=> busyEl.hidden = true, 50);
   }
 };
 
