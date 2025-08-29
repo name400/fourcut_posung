@@ -2,143 +2,120 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>네컷 부스 • Fourcut Booth</title>
-  <meta name="theme-color" content="#0b0c10" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fourcut • 네컷 카메라</title>
   <link rel="stylesheet" href="./style.css" />
-
-  <!-- 라이브러리 (CDN) -->
-  <script defer src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <!-- 필수 라이브러리 -->
   <script defer src="https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/idb-keyval.iife.min.js"></script>
-
-  <!-- 앱 코드 -->
-  <script defer src="./main.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
 </head>
 <body>
-  <!-- 상단: 로고/제목 유지(페이지 UI) -->
-  <header class="topbar">
+  <div class="topbar">
     <div class="brand">
-      <img src="posung.png" alt="로고" class="logo" />
-      <span>2025 보성제</span>
+      <img class="logo" src="posung.png" alt="logo" />
+      <span>2025 보성제 Fourcut</span>
     </div>
-    <nav class="steps">
-      <span class="step active">1 촬영</span><span class="sep">›</span>
-      <span class="step">2 선택</span><span class="sep">›</span>
-      <span class="step">3 프레임</span><span class="sep">›</span>
-      <span class="step">4 생성/공유</span>
-    </nav>
+    <div class="steps">
+      <span class="step active">1. 촬영</span><span class="sep">›</span>
+      <span class="step">2. 선택</span><span class="sep">›</span>
+      <span class="step">3. 미리보기</span><span class="sep">›</span>
+      <span class="step">4. 생성</span>
+    </div>
     <div class="right-actions">
-      <button id="btnFlip" class="ghost">카메라 전환</button>
-      <button id="btnReset" class="ghost">초기화</button>
       <button id="btnGallery" class="ghost">갤러리</button>
     </div>
-  </header>
+  </div>
 
   <main class="container">
-    <!-- 왼쪽: 카메라 + 썸네일 -->
+    <!-- 카메라 영역 -->
     <section class="panel">
       <div class="card cam">
-        <video id="video" autoplay playsinline></video>
+        <video id="video" autoplay playsinline muted></video>
         <div class="cam-overlay">
           <div class="overlay-row">
             <button id="btnStart" class="primary">카메라 시작</button>
-            <div class="counter" id="shotCounter">0 / 6</div>
+            <button id="btnFlip" class="ghost">전/후면 전환</button>
+            <button id="btnReset" class="text">리셋</button>
           </div>
           <div class="overlay-row bottom">
+            <div class="counter"><span id="shotCounter">0 / 6</span></div>
             <button id="btnShot" class="accent" disabled>촬영</button>
           </div>
         </div>
       </div>
 
       <div class="card thumbs">
-        <div class="thumb-grid" id="thumbGrid"></div>
-        <div class="hint">썸네일을 눌러 <b>4장</b> 선택하세요</div>
+        <div id="thumbGrid" class="thumb-grid"></div>
+        <div class="hint">최대 6장 촬영 후 4장을 선택하세요.</div>
+      </div>
+
+      <div class="card frame-picker">
+        <div class="only-polaroid">프레임: 폴라로이드(단색)</div>
+        <div class="color-controls">
+          <input id="frameColor" class="input small" type="color" value="#ffffff" />
+          <input id="frameColorHex" class="input small" type="text" value="#ffffff" />
+        </div>
+        <label class="cap-label" for="caption">캡션</label>
+        <input id="caption" class="input" type="text" placeholder="아래 폴라로이드 캡션" />
       </div>
     </section>
 
-    <!-- 오른쪽: 프레임/미리보기/액션 -->
+    <!-- 미리보기 영역 -->
     <section class="panel">
-      <div class="card frame-picker">
-        <div class="only-polaroid">폴라로이드 프레임 (색상 변경 가능)</div>
-
-        <div class="color-row" id="colorRow">
-          <label class="cap-label">프레임 색</label>
-          <div class="color-controls">
-            <input type="color" id="frameColor" value="#ffffff" />
-            <input type="text" id="frameColorHex" class="input small" value="#ffffff" maxlength="7" />
-          </div>
-        </div>
-
-        <label class="cap-label">캡션(아래)</label>
-        <input id="caption" class="input" placeholder="나만의 네컷" maxlength="24" />
-      </div>
-
       <div class="card preview">
-        <!-- ★ 결과 이미지 안쪽 상단 헤더 추가 -->
         <div id="fourcut" class="fourcut polaroid">
           <div class="fc-header">
-            <img src="posung.png" alt="로고" class="fc-logo" />
+            <img class="fc-logo" src="posung.png" alt="logo" />
             <div class="fc-title">2025 보성제</div>
           </div>
-
           <div class="grid" id="finalGrid"></div>
-          <div class="polaroid-cap" id="polaroidCap"></div>
-
-          <!-- 진행 오버레이 -->
-          <div class="busy" id="busy" hidden>
-            <div class="spinner"></div><span>이미지 생성 중…</span>
+          <div id="polaroidCap" class="polaroid-cap"> </div>
+          <div id="busy" class="busy" hidden>
+            <div class="spinner"></div>
+            <div>이미지 생성 중…</div>
           </div>
         </div>
       </div>
 
       <div class="actions">
         <button id="btnMake" class="primary" disabled>네컷 이미지 생성</button>
-        <button id="btnSave" class="ghost" disabled>기기 저장</button>
-        <button id="btnQR" class="accent" disabled>QR 만들기</button>
+        <button id="btnSave" class="ghost" disabled>이미지 저장</button>
+        <button id="btnQR" class="ghost" disabled>QR 공유</button>
       </div>
-
-      <div class="tiny-hint">※ iOS Safari는 저장 시 새 탭에 열릴 수 있어요. 길게 눌러 “사진 저장”.</div>
+      <div class="tiny-hint">생성 후 저장하거나 QR로 공유할 수 있어요.</div>
     </section>
   </main>
 
   <!-- QR 모달 -->
-  <div class="modal" id="qrModal" hidden>
+  <div id="qrModal" class="modal" hidden>
     <div class="modal-card">
-      <h3>QR로 공유</h3>
-      <canvas id="qrCanvas" width="260" height="260" aria-label="QR code"></canvas>
-      <div class="qr-link" id="qrLinkText"></div>
+      <canvas id="qrCanvas" width="260" height="260"></canvas>
+      <div id="qrLinkText" class="qr-link"></div>
       <div class="qr-actions">
+        <button id="btnOpenViewer" class="primary">링크 열기</button>
+        <button id="btnSaveQR" class="ghost">QR 저장</button>
         <button id="btnCopyLink" class="ghost">링크 복사</button>
-        <button id="btnOpenViewer" class="primary">저장 페이지 열기</button>
-        <button id="btnSaveQR" class="ghost">QR 이미지 저장</button>
         <button id="btnCloseQR" class="text">닫기</button>
       </div>
     </div>
   </div>
 
-  <!-- 갤러리 -->
-  <aside class="drawer" id="gallery" hidden>
+  <!-- 갤러리 드로어 -->
+  <aside id="gallery" class="drawer" hidden>
     <div class="drawer-head">
-      <h3>갤러리</h3>
+      <strong>갤러리</strong>
       <div>
-        <button id="btnWipeGallery" class="ghost">전체 삭제</button>
-        <button id="btnCloseGallery" class="text">닫기</button>
+        <button id="btnWipeGallery" class="text">전체 삭제</button>
+        <button id="btnCloseGallery" class="ghost">닫기</button>
       </div>
     </div>
-    <div class="drawer-body" id="galleryGrid"></div>
+    <div id="galleryGrid" class="drawer-body"></div>
   </aside>
-
   <div id="backdrop" class="backdrop" hidden></div>
-  <canvas id="hiddenCanvas" hidden></canvas>
 
-  <!-- 모달 바깥 클릭 닫기 -->
-  <script>
-    document.addEventListener('click', (e)=>{
-      const modal = document.getElementById('qrModal');
-      if (!modal.hidden && e.target === modal) modal.hidden = true;
-    });
-  </script>
+  <canvas id="hiddenCanvas" style="display:none"></canvas>
+  <script defer src="./main.js"></script>
 </body>
 </html>
