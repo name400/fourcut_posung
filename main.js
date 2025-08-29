@@ -48,7 +48,16 @@ let shots = [];
 let selected = new Set();
 let finalDataUrl = null;
 let lastQRLink = null;
-let facing = 'user';
+let facing = 'user';              // 'user' 전면, 'environment' 후면
+
+/* 타이머(자동 촬영) 상태 */
+const AUTO_LIMIT_SEC = 6;
+let autoTimer = null;             // setInterval 핸들
+let autoRemain = AUTO_LIMIT_SEC;  // 남은 초
+let shotLock = false;             // 연타 방지
+
+/* 카운트다운 표시 엘리먼트(동적 생성) */
+let countdownBadge = null;
 
 /* ===== UI helpers ===== */
 function setStep(n){ [...$$('.step')].forEach((el,i)=> el.classList.toggle('active', i===n-1)); }
@@ -83,6 +92,7 @@ function renderPreview(){
 async function startCamera(){
   try{
     if (stream) stopCamera();
+
     const constraints = { video: { facingMode:{ideal:facing}, width:{ideal:1280}, height:{ideal:720} }, audio:false };
     try{
       stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -90,12 +100,21 @@ async function startCamera(){
       // 일부 환경에서 facingMode가 무시될 때 폴백
       stream = await navigator.mediaDevices.getUserMedia({ video:true, audio:false });
     }
+
     video.srcObject = stream;
+
+    // 전면 카메라일 때 미러링(좌우반전) 미리보기
+    applyPreviewMirror();
+
     await new Promise(res=>{
       if (video.readyState >= 1 && video.videoWidth) return res();
       video.onloadedmetadata = ()=> res();
     });
     btnShot.disabled = false;
+
+    // 카메라 시작 시 자동 타이머 시작
+    resetAndStartAutoTimer();
+
   }catch(e){
     console.error('getUserMedia error', e);
     let msg='카메라 접근 실패';
@@ -107,32 +126,117 @@ async function startCamera(){
 }
 function stopCamera(){ try{ stream?.getTracks()?.forEach(t=>t.stop()); }catch{} stream=null; }
 
+/* 전면 카메라일 때 미리보기 미러링 */
+function applyPreviewMirror(){
+  const mirrored = (facing === 'user');
+  video.style.transform = mirrored ? 'scaleX(-1)' : 'none';
+}
+
+/* ===== Auto timer ===== */
+function ensureCountdownBadge(){
+  if (countdownBadge) return countdownBadge;
+  const overlay = document.querySelector('.cam-overlay .overlay-row.bottom');
+  countdownBadge = document.createElement('div');
+  countdownBadge.className = 'counter';
+  countdownBadge.style.marginLeft = 'auto';
+  overlay.insertBefore(countdownBadge, overlay.lastElementChild); // 촬영 버튼 왼쪽에 붙임
+  return countdownBadge;
+}
+function showCountdown(sec){
+  ensureCountdownBadge();
+  countdownBadge.textContent = `남은 시간 ${sec}s`;
+}
+function clearCountdown(){
+  if (countdownBadge) countdownBadge.textContent = '';
+}
+
+function startAutoTimerTick(){
+  stopAutoTimer(); // 중복 방지
+  autoRemain = AUTO_LIMIT_SEC;
+  showCountdown(autoRemain);
+  autoTimer = setInterval(()=>{
+    autoRemain -= 1;
+    if (autoRemain > 0){
+      showCountdown(autoRemain);
+    }else{
+      stopAutoTimer();
+      // 시간이 끝나면 자동 촬영
+      doCapture('auto');
+    }
+  }, 1000);
+}
+function stopAutoTimer(){
+  if (autoTimer){ clearInterval(autoTimer); autoTimer = null; }
+  // 남은 시간이 0이거나 캡처 직후에는 숫자를 잠깐 비워준다
+  clearCountdown();
+}
+function resetAndStartAutoTimer(){
+  if (shots.length >= 6) { stopAutoTimer(); return; }
+  startAutoTimerTick();
+}
+
 /* ===== Events ===== */
 btnStart.onclick = startCamera;
-btnFlip.onclick = async ()=>{ facing = (facing==='user')?'environment':'user'; await startCamera(); };
+btnFlip.onclick = async ()=>{
+  facing = (facing==='user')?'environment':'user';
+  await startCamera();           // 전환 즉시 재시작
+  applyPreviewMirror();          // 미리보기 좌우반전 갱신
+};
 btnReset.onclick = ()=>{
   shots=[]; selected=new Set(); finalDataUrl=null; lastQRLink=null;
   btnMake.disabled = btnSave.disabled = btnQR.disabled = true;
   renderThumbs(); renderPreview(); updateCounter();
+  resetAndStartAutoTimer();
 };
 captionInput.addEventListener('input', ()=> renderPreview());
 
-/* Capture */
-let shotLock=false;
-btnShot.onclick = ()=>{
+/* ===== Capture (manual & auto 공용) ===== */
+btnShot.onclick = ()=> doCapture('manual');
+
+function doCapture(source='manual'){
   if(shotLock) return;
   if(!stream || shots.length>=6) return;
+
   if(!video.videoWidth || !video.videoHeight){
-    shotLock=true; setTimeout(()=> shotLock=false,600);
-    alert('카메라 초기화 중입니다. 잠시만…');
+    // 초기화 지연 대비: 수동/자동 모두 동일하게 fail-safe
+    shotLock = true; setTimeout(()=> shotLock=false, 600);
+    if(source==='manual') alert('카메라 초기화 중입니다. 잠시만…');
+    // 타이머는 유지
     return;
   }
-  hiddenCanvas.width = video.videoWidth; hiddenCanvas.height = video.videoHeight;
-  hiddenCanvas.getContext('2d').drawImage(video,0,0,hiddenCanvas.width,hiddenCanvas.height);
-  shots.push(hiddenCanvas.toDataURL('image/jpeg',0.9));
-  updateCounter(); renderThumbs();
-  if(shots.length===6) btnShot.disabled=true;
-};
+
+  shotLock = true;
+  try{
+    const w = video.videoWidth, h = video.videoHeight;
+    hiddenCanvas.width = w; hiddenCanvas.height = h;
+    const ctx = hiddenCanvas.getContext('2d');
+
+    // 전면 카메라면 캡처 이미지도 좌우반전해서 저장
+    if (facing === 'user'){
+      ctx.save();
+      ctx.translate(w, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, 0, 0, w, h);
+      ctx.restore();
+    }else{
+      ctx.drawImage(video, 0, 0, w, h);
+    }
+
+    shots.push(hiddenCanvas.toDataURL('image/jpeg',0.9));
+    updateCounter(); renderThumbs();
+
+    // 6장 다 채우면 멈춤
+    if(shots.length===6){
+      btnShot.disabled = true;
+      stopAutoTimer();
+    }else{
+      // 다음 사진을 위한 타이머 재시작
+      resetAndStartAutoTimer();
+    }
+  } finally {
+    setTimeout(()=> shotLock=false, 120); // 과도한 연타 방지
+  }
+}
 
 /* ===== Polaroid color (frame) ===== */
 function sanitizeHex(v){
@@ -145,7 +249,7 @@ function setPolaroidColor(hex){
   const h = sanitizeHex(hex);
   document.documentElement.style.setProperty('--polaroid-bg', h);
 
-  // 배경 밝기에 따라 busy 대비 조정
+  // 밝기 기반 Busy 대비 조정
   const r = parseInt(h.substr(1,2),16), g = parseInt(h.substr(3,2),16), b = parseInt(h.substr(5,2),16);
   const luminance = (0.2126*r + 0.7152*g + 0.0722*b)/255;
   if(luminance < 0.5){
@@ -163,11 +267,17 @@ frameColor.addEventListener('input', e=> setPolaroidColor(e.target.value));
 frameColorHex.addEventListener('input', e=> setPolaroidColor(e.target.value));
 setPolaroidColor(frameColor.value); // 초기 반영
 
-/* ===== Export: 항상 동일 픽셀 사이즈로 렌더 (1080x1620) ===== */
-const EXPORT_W = 1080;
-const EXPORT_H = 1620;
-const RENDER_TIMEOUT_MS = 12000;
+/* 이미지 로드 보조 */
+function waitImage(img){
+  return new Promise((resolve,reject)=>{
+    if(img.complete && img.naturalWidth>0) return resolve();
+    img.onload = ()=>resolve();
+    img.onerror = ()=>reject(new Error('이미지 로드 실패'));
+  });
+}
 
+/* ===== Make final image (오버레이 타임아웃 포함) ===== */
+const RENDER_TIMEOUT_MS = 12000;
 btnMake.onclick = async ()=>{
   if(selected.size!==4) return alert('4장을 선택하세요');
   if(!window.htmlToImage) return alert('이미지 모듈 로드 실패. 새로고침 해주세요.');
@@ -184,25 +294,10 @@ btnMake.onclick = async ()=>{
     const imgs = Array.from(fourcut.querySelectorAll('img'));
     await Promise.all(imgs.map(img => (img.decode ? img.decode().catch(()=>waitImage(img)) : waitImage(img))));
 
-    // 화면 크기와 무관하게 고정 사이즈로 내보내기
     const rect = fourcut.getBoundingClientRect();
-    const scaleX = EXPORT_W / Math.max(1, rect.width);
-    const scaleY = EXPORT_H / Math.max(1, rect.height);
-
+    const width = Math.round(rect.width), height = Math.round(rect.height);
     const options = {
-      width: Math.round(rect.width),
-      height: Math.round(rect.height),
-      canvasWidth: EXPORT_W,
-      canvasHeight: EXPORT_H,
-      pixelRatio: 1,
-      quality: 0.9,
-      cacheBust: true,
-      style: {
-        transform: `scale(${scaleX}, ${scaleY})`,
-        transformOrigin: 'top left',
-        width: `${rect.width}px`,
-        height: `${rect.height}px`,
-      },
+      quality:0.85, width, height, canvasWidth:width, canvasHeight:height, pixelRatio:1, cacheBust:true,
       filter:(node)=>!(node.id==='busy' || node.classList?.contains('busy'))
     };
 
@@ -222,18 +317,9 @@ btnMake.onclick = async ()=>{
     alert('이미지 생성 실패: ' + (map[e?.message] || e?.message || '알 수 없는 오류'));
   }finally{
     busyEl.hidden = true;
-    requestAnimationFrame(()=> busyEl.hidden = true); // 오버레이 잔상 방지
+    requestAnimationFrame(()=> busyEl.hidden = true);
   }
 };
-
-/* 이미지 로드 보조 */
-function waitImage(img){
-  return new Promise((resolve,reject)=>{
-    if(img.complete && img.naturalWidth>0) return resolve();
-    img.onload = ()=>resolve();
-    img.onerror = ()=>reject(new Error('이미지 로드 실패'));
-  });
-}
 
 /* Save */
 btnSave.onclick = ()=>{
@@ -241,7 +327,7 @@ btnSave.onclick = ()=>{
   const a=document.createElement('a'); a.href=finalDataUrl; a.download='fourcut.jpg'; a.click();
 };
 
-/* ===== QR (링크 경량화 포함) ===== */
+/* ===== QR ===== */
 const qrModal = $('#qrModal');
 const qrCanvas = $('#qrCanvas');
 const btnOpenViewer = $('#btnOpenViewer');
@@ -250,21 +336,10 @@ const btnCloseQR = $('#btnCloseQR');
 const btnCopyLink = $('#btnCopyLink');
 const qrLinkText = $('#qrLinkText');
 
-async function makeQrFriendly(dataUrl){
-  const img = new Image(); img.src = dataUrl; await img.decode();
-  const maxW = 720;
-  const scale = Math.min(1, maxW / img.width);
-  const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
-  const c = document.createElement('canvas'); c.width = w; c.height = h;
-  c.getContext('2d').drawImage(img, 0, 0, w, h);
-  return c.toDataURL('image/jpeg', 0.65);
-}
-
 btnQR.onclick = async ()=>{
   if(!finalDataUrl) return;
   try{
-    const small = await makeQrFriendly(finalDataUrl);
-    const link = new URL('viewer.html', location.href).toString() + '#img=' + LZString.compressToEncodedURIComponent(small);
+    const link = new URL('viewer.html', location.href).toString() + '#img=' + LZString.compressToEncodedURIComponent(finalDataUrl);
     lastQRLink = link; qrModal.hidden=false;
     await QRCode.toCanvas(qrCanvas, link, { width:260, errorCorrectionLevel:'M' });
     qrLinkText.textContent = link;
@@ -289,7 +364,7 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !gallery.hidden
 btnWipeGallery.onclick = async ()=>{
   if(!confirm('갤러리를 모두 삭제할까요?')) return;
   const keys = await idbKeys();
-  for(const k of keys){ if(String(k).startsWith('photo:')) await idbDel(k); }
+  for(const k of keys) if(String(k).startsWith('photo:')) await idbDel(k);
   await renderGallery();
   alert('삭제 완료');
 };
