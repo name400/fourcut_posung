@@ -65,12 +65,22 @@
           <button class="pill" data-frame="black">블랙</button>
           <button class="pill" data-frame="polaroid">폴라로이드</button>
         </div>
+
+        <!-- 커스텀 프레임 업로드 -->
+        <div class="frame-file">
+          <input id="frameFile" type="file" accept="image/png,image/webp" hidden>
+          <button id="btnFramePick" class="ghost">프레임 이미지 선택(PNG)</button>
+          <button id="btnFrameClear" class="text" hidden>프레임 제거</button>
+        </div>
+
         <label class="cap-label">캡션</label>
         <input id="caption" class="input" placeholder="나만의 네컷" maxlength="24" />
       </div>
 
       <div class="card preview">
         <div id="fourcut" class="fourcut classic">
+          <!-- 오버레이 프레임 -->
+          <img id="frameOverlay" class="frame-overlay" alt="" hidden>
           <div class="grid" id="finalGrid"></div>
           <div class="polaroid-cap" id="polaroidCap"></div>
           <div class="busy" id="busy" hidden>
@@ -94,7 +104,6 @@
     <div class="modal-card">
       <h3>QR로 공유</h3>
       <canvas id="qrCanvas" width="260" height="260" aria-label="QR code"></canvas>
-      <img id="qrImg" width="260" height="260" hidden alt="QR 코드" />
       <div class="qr-link" id="qrLinkText"></div>
       <div class="qr-actions">
         <button id="btnCopyLink" class="ghost">링크 복사</button>
