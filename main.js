@@ -13,7 +13,7 @@ const thumbGrid = $('#thumbGrid');
 const btnMake = $('#btnMake');
 const btnSave = $('#btnSave');
 const btnQR = $('#btnQR');
-const fourcut = $('#fourcut');
+const fourcut = $('#fourcut');          // 프리뷰(레이아웃 참고용)
 const finalGrid = $('#finalGrid');
 const captionInput = $('#caption');
 const polaroidCap = $('#polaroidCap');
@@ -29,9 +29,10 @@ const frameColor = $('#frameColor');
 const frameColorHex = $('#frameColorHex');
 
 /* ===== config ===== */
-const MIRROR_FRONT = true;          // 전면 카메라 미리보기/저장을 ‘거울모드’로
-const AUTO_LIMIT_SEC = 6;           // 자동 촬영 카운트다운
-const RENDER_TIMEOUT_MS = 15000;    // 이미지 렌더 타임아웃(ms)
+const MIRROR_FRONT = true;       // 전면 카메라 미리보기/저장 모두 거울모드
+const AUTO_LIMIT_SEC = 6;        // 자동 촬영 카운트다운
+const EXPORT_BASE_W = 1200;      // 결과 이미지 기준 폭(px) 2:3 비율 → 1200x1800 기본
+const DPR_CAP = 2;               // 과한 해상도 방지
 
 /* ===== storage (idb → fallback) ===== */
 const idb = (window.idbKeyval && typeof window.idbKeyval.set === 'function') ? {
@@ -108,7 +109,7 @@ async function startCamera(){
     stream = await navigator.mediaDevices.getUserMedia(constraints);
     video.srcObject = stream;
 
-    // 전면 미리보기: 거울모드(한 번만 적용)
+    // 전면 미리보기: 거울모드
     const mirrorPreview = MIRROR_FRONT && (facing === 'user');
     video.classList.toggle('mirror', mirrorPreview);
 
@@ -156,7 +157,7 @@ function stopAutoTimer(){ if(autoTimer){ clearInterval(autoTimer); autoTimer=nul
 function showCountdown(t){ shotCounter.textContent = `${shots.length} / 6  (${t})`; }
 function clearCountdown(){ shotCounter.textContent = `${shots.length} / 6`; }
 
-/* ===== capture ===== */
+/* ===== capture (미리보기=거울, 저장도 동일 방향) ===== */
 function doCapture(){
   if(shotLock) return;
   if(!stream || shots.length>=6) return;
@@ -168,7 +169,7 @@ function doCapture(){
     hiddenCanvas.width = w; hiddenCanvas.height = h;
     const ctx = hiddenCanvas.getContext('2d');
 
-    // 저장본도 ‘미리보기와 같은’ 거울모드 1회만 적용
+    // 전면은 저장도 거울방향 유지
     const mirrorSave = MIRROR_FRONT && (facing === 'user');
     if (mirrorSave){ ctx.translate(w, 0); ctx.scale(-1, 1); }
     ctx.drawImage(video, 0, 0, w, h);
@@ -198,84 +199,152 @@ frameColor?.addEventListener('input', e=> setPolaroidColor(e.target.value));
 frameColorHex?.addEventListener('input', e=> setPolaroidColor(e.target.value));
 setPolaroidColor(frameColor?.value || '#ffffff');
 
-/* ===== image helpers ===== */
-function waitImage(img){ return new Promise((res,rej)=>{ if(img.complete&&img.naturalWidth>0) return res(); img.onload=res; img.onerror=()=>rej(new Error('이미지 로드 실패')); }); }
+/* ===== utils ===== */
+function loadImage(src){
+  return new Promise((resolve,reject)=>{
+    const img = new Image();
+    img.onload = ()=> resolve(img);
+    img.onerror = ()=> reject(new Error('이미지 로드 실패'));
+    img.src = src;
+  });
+}
+/** object-fit: cover 처럼 drawImage */
+function drawCover(ctx, img, dx, dy, dW, dH){
+  const sW = img.naturalWidth || img.width;
+  const sH = img.naturalHeight || img.height;
+  const sRatio = sW / sH;
+  const dRatio = dW / dH;
+  let sx=0, sy=0, sw=sW, sh=sH;
+  if (sRatio > dRatio) {
+    // 소스가 더 가로로 김 → 좌우 자르기
+    const newW = sh * dRatio;
+    sx = (sw - newW) / 2;
+    sw = newW;
+  } else {
+    // 소스가 더 세로로 김 → 상하 자르기
+    const newH = sw / dRatio;
+    sy = (sh - newH) / 2;
+    sh = newH;
+  }
+  ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dW, dH);
+}
+function roundRect(ctx, x, y, w, h, r){
+  const radius = Math.min(r, w/2, h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+radius, y);
+  ctx.arcTo(x+w, y, x+w, y+h, radius);
+  ctx.arcTo(x+w, y+h, x, y+h, radius);
+  ctx.arcTo(x, y+h, x, y, radius);
+  ctx.arcTo(x, y, x+w, y, radius);
+  ctx.closePath();
+}
 
-/* ===== offscreen stable render (잘림 방지) ===== */
-async function renderFourcutStable(){
-  // 폰트 대기(최대 3초)
-  if(document.fonts?.ready){
-    try{ await Promise.race([document.fonts.ready, new Promise((_,rej)=>setTimeout(()=>rej(0),3000))]); }catch{}
+/* ===== 캔버스 합성 (잘림/무한로딩 근본 해결) ===== */
+async function composeFourcutCanvas(){
+  // 1) 출력 캔버스 크기 결정 (2:3 고정)
+  const dpr = Math.min(DPR_CAP, window.devicePixelRatio || 1);
+  const outW = Math.round(EXPORT_BASE_W * dpr);
+  const outH = Math.round(outW * 1.5);         // 2:3
+
+  const canvas = document.createElement('canvas');
+  canvas.width = outW; canvas.height = outH;
+  const ctx = canvas.getContext('2d');
+
+  // 2) 스타일 참조
+  const bg = getComputedStyle(document.documentElement).getPropertyValue('--polaroid-bg').trim() || '#fff';
+  const pad = Math.round(32 * dpr);            // 바깥 패딩
+  const gap = Math.round(20 * dpr);            // 셀 사이 간격
+  const radius = Math.round(36 * dpr);         // 폴라로이드 모서리
+  const headerH = Math.round(96 * dpr);        // 상단 로고+제목 영역
+  const captionH = Math.round(80 * dpr);       // 하단 캡션 영역
+  const gridPadTop = Math.round(12 * dpr);
+
+  // 3) 배경(라운드 카드)
+  ctx.fillStyle = bg;
+  roundRect(ctx, 0, 0, outW, outH, radius); ctx.fill();
+
+  // 4) 상단 로고/타이틀
+  const logoEl = fourcut.querySelector('.fc-logo');
+  const titleText = (fourcut.querySelector('.fc-title')?.textContent || '').trim();
+  if (logoEl) {
+    try {
+      const logo = await loadImage(logoEl.src);
+      const lSize = Math.round(64 * dpr);
+      ctx.drawImage(logo, pad, pad + Math.round((headerH - lSize)/2), lSize, lSize);
+    } catch {}
+  }
+  ctx.fillStyle = '#111';
+  ctx.font = `${Math.round(40*dpr)}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
+  ctx.textBaseline = 'middle';
+  ctx.fillText(titleText || '', pad + Math.round(80*dpr), pad + Math.round(headerH/2));
+
+  // 5) 2x2 그리드
+  const innerX = pad;
+  const innerY = pad + headerH + gridPadTop;
+  const innerW = outW - pad*2;
+  const innerH = outH - pad - captionH - innerY;
+
+  const cellW = Math.floor((innerW - gap) / 2);
+  const cellH = Math.floor(cellW * 4 / 3);     // 3:4 비율 셀
+  const rowGap = gap;
+
+  const selIdx = [...selected].slice(0,4);
+  const imgs = await Promise.all(selIdx.map(i => loadImage(shots[i])));
+
+  for (let r=0; r<2; r++){
+    for (let c=0; c<2; c++){
+      const idx = r*2 + c;
+      const x = innerX + c * (cellW + gap);
+      const y = innerY + r * (cellH + rowGap);
+
+      // 셀 베이스(배경)
+      ctx.save();
+      ctx.fillStyle = '#dbe1ee';
+      roundRect(ctx, x, y, cellW, cellH, Math.round(24*dpr)); ctx.fill();
+      ctx.clip();
+      // 이미지 cover
+      const img = imgs[idx];
+      if (img) drawCover(ctx, img, x, y, cellW, cellH);
+      ctx.restore();
+    }
   }
 
-  // scrollWidth/Height로 CSS max-width 영향 제거
-  const srcW = Math.max(1, fourcut.scrollWidth || fourcut.offsetWidth);
-  const srcH = Math.max(1, fourcut.scrollHeight || fourcut.offsetHeight);
+  // 6) 하단 캡션
+  const cap = (captionInput?.value || '').trim();
+  if (cap){
+    ctx.fillStyle = '#111';
+    ctx.font = `700 ${Math.round(34*dpr)}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(cap, outW/2, outH - Math.round(captionH/2));
+  }
 
-  // 1) 캡처 전용 복제
-  const clone = fourcut.cloneNode(true);
-  Object.assign(clone.style,{
-    position:'fixed',
-    left:'-9999px',
-    top:'0',
-    width:srcW+'px',
-    height:srcH+'px',
-    maxWidth:'none',
-    maxHeight:'none',
-    transform:'none',
-    overflow:'hidden',
-    zIndex:'-1'
-  });
-  // busy 제거
-  clone.querySelectorAll('.busy').forEach(n=>n.remove());
-  document.body.appendChild(clone);
-
-  // 내부 이미지 로드
-  const imgs=[...clone.querySelectorAll('img')];
-  await Promise.all(imgs.map(img=>img.decode?img.decode().catch(()=>waitImage(img)):waitImage(img)));
-
-  // 2) 렌더 (배율 1로 고정 → 메모리/잘림 이슈 방지)
-  const dataUrl = await htmlToImage.toJpeg(clone,{
-    quality:0.95,
-    width:srcW,
-    height:srcH,
-    canvasWidth:srcW,
-    canvasHeight:srcH,
-    pixelRatio:1,
-    cacheBust:true,
-    filter:(n)=>!(n?.classList?.contains?.('busy')||n?.id==='busy'),
-    backgroundColor:getComputedStyle(document.documentElement).getPropertyValue('--polaroid-bg') || '#fff'
-  });
-
-  // 3) 정리
-  document.body.removeChild(clone);
-  return dataUrl;
+  return canvas.toDataURL('image/jpeg', 0.95);
 }
 
 /* ===== make / save / qr ===== */
 btnMake?.addEventListener('click', async ()=>{
   if(selected.size!==4) return alert('4장을 선택하세요');
-  if(!window.htmlToImage) return alert('이미지 모듈 로드 실패. 새로고침 해주세요.');
-  if(renderLock) return; renderLock=true;
-  setStep(4); busyEl.hidden=false;
+  if(renderLock) return;
+  renderLock = true;
+  setStep(4);
+  busyEl && (busyEl.hidden = false);
 
   try{
-    finalDataUrl = await Promise.race([
-      renderFourcutStable(),
-      new Promise((_,rej)=>setTimeout(()=>rej(new Error('render-timeout')), RENDER_TIMEOUT_MS))
-    ]);
+    // 캔버스 합성(빠르고 안정적)
+    finalDataUrl = await composeFourcutCanvas();
+
     btnSave.disabled = btnQR.disabled = false;
 
+    // 갤러리 저장
     const id = crypto.randomUUID();
     await idbSet(`photo:${id}`, { id, createdAt: Date.now(), image: finalDataUrl });
   }catch(e){
     console.error(e);
     alert('이미지 생성 실패: ' + (e?.message||e));
   }finally{
-    // ✅ 어떤 경우에도 로딩/락 해제
-    busyEl.hidden = true;
-    setTimeout(()=> busyEl.hidden = true, 80);
-    renderLock=false;
+    if (busyEl) busyEl.hidden = true;  // ✅ 항상 해제
+    renderLock = false;
   }
 });
 
