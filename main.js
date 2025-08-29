@@ -36,28 +36,35 @@ function showCountdown(text){
 }
 
 // 자동 촬영 (6장)
+// 자동 촬영 (6장 연속)
 async function startAutoCapture(){
   shots=[]; selected.clear(); finalDataUrl=null;
   renderThumbs(); renderPreview(); updateCounter();
 
-  shotCount=0;
-  autoRemain=6;
+  let count=0; // 찍은 장 수
 
-  autoTimer=setInterval(()=>{
-    if(autoRemain<=0){
-      clearInterval(autoTimer);
-      showCountdown("");
-      return;
-    }
-    showCountdown(autoRemain);
-    if(autoRemain===1){ // 마지막 1초일 때 찍음
-      triggerFlash();
-      doCapture();
-      shotCount++;
-    }
-    autoRemain--;
-  },1000);
+  function oneCycle(sec=6){
+    let remain=sec;
+    showCountdown(remain);
+
+    autoTimer=setInterval(()=>{
+      remain--;
+      showCountdown(remain>0 ? remain : "");
+      if(remain<=0){
+        clearInterval(autoTimer);
+        triggerFlash();
+        doCapture();
+        count++;
+        if(count<6){ // 아직 6장 안 됐으면 다음 주기 시작
+          setTimeout(()=>oneCycle(sec),1000);
+        }
+      }
+    },1000);
+  }
+
+  oneCycle(); // 첫 주기 시작
 }
+
 
 // 사진 찍기
 function doCapture(){
@@ -157,3 +164,4 @@ $("#backdrop").onclick=()=>{ $("#gallery").classList.remove("open"); setTimeout(
 
 $("#btnReset").onclick=()=>{ shots=[];selected.clear();finalDataUrl=null;renderThumbs();renderPreview();updateCounter(); };
 $("#btnFlip").onclick=()=>{ alert("카메라 전환은 브라우저별 지원 필요"); };
+
