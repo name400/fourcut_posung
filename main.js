@@ -7,8 +7,6 @@ let shots=[];
 let selected=new Set();
 let finalDataUrl=null;
 let autoTimer=null;
-let autoRemain=0;
-let shotCount=0;
 
 // 카메라 시작
 async function startCamera(){
@@ -31,22 +29,17 @@ function triggerFlash(){
 }
 
 // 카운트다운 표시
-function showCountdown(text){
-  $("#countdown").textContent=text;
-}
+function showCountdown(text){ $("#countdown").textContent=text; }
 
-// 자동 촬영 (6장)
 // 자동 촬영 (6장 연속)
 async function startAutoCapture(){
   shots=[]; selected.clear(); finalDataUrl=null;
   renderThumbs(); renderPreview(); updateCounter();
 
-  let count=0; // 찍은 장 수
-
+  let count=0;
   function oneCycle(sec=6){
     let remain=sec;
     showCountdown(remain);
-
     autoTimer=setInterval(()=>{
       remain--;
       showCountdown(remain>0 ? remain : "");
@@ -55,16 +48,12 @@ async function startAutoCapture(){
         triggerFlash();
         doCapture();
         count++;
-        if(count<6){ // 아직 6장 안 됐으면 다음 주기 시작
-          setTimeout(()=>oneCycle(sec),1000);
-        }
+        if(count<6){ setTimeout(()=>oneCycle(sec),1000); }
       }
     },1000);
   }
-
-  oneCycle(); // 첫 주기 시작
+  oneCycle();
 }
-
 
 // 사진 찍기
 function doCapture(){
@@ -73,10 +62,7 @@ function doCapture(){
   canvas.width=video.videoWidth; canvas.height=video.videoHeight;
   canvas.getContext("2d").drawImage(video,0,0);
   const dataUrl=canvas.toDataURL("image/jpeg",0.9);
-  if(shots.length<6){ 
-    shots.push(dataUrl); 
-    renderThumbs(); updateCounter();
-  }
+  if(shots.length<6){ shots.push(dataUrl); renderThumbs(); updateCounter(); }
 }
 
 // 썸네일
@@ -114,8 +100,8 @@ async function makeFourcut(){
   const node=$("#fourcut");
   const canvas=await html2canvas(node,{backgroundColor:null,scale:2});
   finalDataUrl=canvas.toDataURL("image/jpeg",0.92);
-  $("#btnSave").disabled=true; // 합성 후 저장 가능
   $("#btnSave").disabled=false;
+  $("#btnDownload").disabled=false;
 }
 
 // 저장
@@ -127,6 +113,15 @@ async function saveImage(){
   await renderGallery();
   alert("저장 완료!");
 }
+
+// 다운로드
+$("#btnDownload").onclick=()=>{
+  if(!finalDataUrl) return;
+  const a=document.createElement("a");
+  a.href=finalDataUrl;
+  a.download="fourcut.jpg";
+  a.click();
+};
 
 // 갤러리
 async function renderGallery(){
@@ -152,7 +147,10 @@ $("#frameColor").oninput=()=>{ $(".fourcut").style.backgroundColor=$("#frameColo
 
 // 버튼 이벤트
 $("#btnStart").onclick=async()=>{ await startCamera(); startAutoCapture(); };
-$("#btnShot").onclick=()=>{ triggerFlash(); doCapture(); };
+$("#btnShot").onclick=()=>{ 
+  if(autoTimer){ clearInterval(autoTimer); autoTimer=null; showCountdown(""); }
+  triggerFlash(); doCapture(); 
+};
 $("#caption").oninput=()=>renderPreview();
 $("#btnMake").onclick=()=>makeFourcut();
 $("#btnSave").onclick=()=>saveImage();
@@ -164,4 +162,3 @@ $("#backdrop").onclick=()=>{ $("#gallery").classList.remove("open"); setTimeout(
 
 $("#btnReset").onclick=()=>{ shots=[];selected.clear();finalDataUrl=null;renderThumbs();renderPreview();updateCounter(); };
 $("#btnFlip").onclick=()=>{ alert("카메라 전환은 브라우저별 지원 필요"); };
-
