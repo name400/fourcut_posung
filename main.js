@@ -136,44 +136,15 @@ async function makeFourcut(){
   finalDataUrl=canvas.toDataURL("image/jpeg",0.92);
   $("#btnSave").disabled=false;
 }
-// 저장 (갤러리 + QR 모달)
+// 저장 (갤러리만)
 async function saveImage(){
   if(!finalDataUrl) return;
   const id=Date.now();
   const payload={id,createdAt:Date.now(),image:finalDataUrl};
   localStorage.setItem("photo:"+id,JSON.stringify(payload));
   await renderGallery();
-
-  // QR 코드 표시
-  showQR(finalDataUrl);
+  alert("저장 완료!");
 }
-
-// QR 모달 표시
-function showQR(dataUrl){
-  const modal=$("#qrModal");
-  modal.hidden=false;
-
-  // QR 찍으면 이미지 다운로드 강제 시작하도록 Blob URL 생성
-  const blob = dataURLtoBlob(dataUrl);
-  const url = URL.createObjectURL(blob);
-
-  QRCode.toCanvas($("#qrCanvas"), url, {width:240}, function (error) {
-    if(error) console.error(error);
-  });
-}
-
-// DataURL → Blob 변환
-function dataURLtoBlob(dataurl) {
-  let arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
-  bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
-  while(n--){
-    u8arr[n] = bstr.charCodeAt(n);
-  }
-  return new Blob([u8arr], {type:mime});
-}
-
-// QR 닫기
-$("#qrClose").onclick=()=>{ $("#qrModal").hidden=true; };
 
 // 갤러리
 async function renderGallery(){
