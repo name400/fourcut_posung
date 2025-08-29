@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>보성제 4컷 포토</title>
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 </head>
 <body>
   <!-- 상단바 -->
@@ -72,7 +73,6 @@
       <div class="actions">
         <button id="btnMake" class="accent" disabled>4컷 만들기</button>
         <button id="btnSave" class="primary" disabled>저장</button>
-        <button id="btnDownload" class="accent" disabled>다운로드</button>
       </div>
     </div>
   </div>
@@ -93,6 +93,15 @@
   <!-- 플래시 / 카운트다운 -->
   <div id="flash" class="flash"></div>
   <div id="countdown" class="big-countdown"></div>
+
+  <!-- QR 모달 -->
+  <div id="qrModal" class="qr-modal" hidden>
+    <div class="qr-content">
+      <button id="qrClose" class="qr-close">×</button>
+      <h3>QR코드를 스캔해서 사진을 다운로드하세요</h3>
+      <canvas id="qrCanvas"></canvas>
+    </div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="main.js"></script>
