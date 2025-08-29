@@ -1,48 +1,39 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>네컷 저장</title>
-<style>
-  :root{--bg:#0b0c10;--card:#151823;--text:#e9eef6}
-  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
-  .wrap{display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;min-height:100dvh;padding:20px}
-  .card{background:var(--card);border:1px solid #1f2330;border-radius:16px;padding:16px}
-  img{max-width:min(92vw,520px);height:auto;border-radius:16px;display:block}
-  .btn{border:0;border-radius:12px;padding:12px 16px;font-weight:700;cursor:pointer;background:#4c82ff;color:#fff}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>네컷 저장 • Fourcut Viewer</title>
+  <link rel="stylesheet" href="./style.css?v=20250829" />
+  <script defer src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
 </head>
 <body>
-<div class="wrap">
-  <h2>네컷 저장</h2>
-  <div class="card"><img id="img" alt="fourcut"></div>
-  <button class="btn" id="btn">이미지 저장</button>
-</div>
-<script>
-  function getHashParam(name){
-    try{
-      const hash = location.hash.slice(1);
-      const params = new URLSearchParams(hash);
-      return params.get(name);
-    }catch{ return null; }
-  }
-  const enc = getHashParam('img');
-  if(enc){
-    try{
-      const dataUrl = LZString.decompressFromEncodedURIComponent(enc);
-      document.getElementById('img').src = dataUrl;
-    }catch(e){ alert('이미지 디코딩 실패'); }
-  }else{
-    document.body.innerHTML = '<div class="wrap"><p>이미지가 없습니다.</p></div>';
-  }
-  document.getElementById('btn').onclick = ()=>{
-    const a = document.createElement('a');
-    a.href = document.getElementById('img').src;
-    a.download = 'fourcut.jpg';
-    a.click();
-  };
-</script>
-<script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
+  <main class="container" style="grid-template-columns:1fr;max-width:680px">
+    <section class="panel">
+      <div class="card preview">
+        <img id="img" alt="fourcut" style="max-width:100%;border-radius:16px;border:1px solid #1f2330"/>
+      </div>
+      <div class="actions">
+        <button id="btnSave" class="primary">이미지 저장</button>
+        <button id="btnOpenRaw" class="ghost">새 탭에서 열기</button>
+      </div>
+      <div class="tiny-hint">새 탭에서 열어 길게 눌러 "사진 저장"을 사용하세요.</div>
+    </section>
+  </main>
+
+  <script>
+    const hash = location.hash.replace(/^#img=/,'');
+    if(!hash){
+      document.body.innerHTML = '<p style="padding:24px">이미지 데이터가 없습니다.</p>';
+    }else{
+      const dataUrl = LZString.decompressFromEncodedURIComponent(hash);
+      const img = document.getElementById('img');
+      img.src = dataUrl;
+      document.getElementById('btnSave').onclick = ()=>{
+        const a = document.createElement('a'); a.href = dataUrl; a.download = 'fourcut.jpg'; a.click();
+      };
+      document.getElementById('btnOpenRaw').onclick = ()=> window.open(dataUrl, '_blank');
+    }
+  </script>
 </body>
 </html>
