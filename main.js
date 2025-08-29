@@ -331,4 +331,3 @@ on($('#btnWipeGallery'),'click', async ()=>{ if(!confirm('모두 삭제?')) retu
   const keys=await dbAllKeys(); for(const k of keys) await dbDelImage(k); await renderGallery(); toast('삭제 완료');
 });
 
-}); // DOMContentLoaded
