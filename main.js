@@ -245,8 +245,9 @@ btnMake.onclick = async ()=>{
     const imgs = Array.from(fourcut.querySelectorAll('img'));
     await Promise.all(imgs.map(img => (img.decode ? img.decode().catch(()=>new Promise((res,rej)=>{img.onload=res;img.onerror=rej;})) : new Promise((res,rej)=>{img.onload=res;img.onerror=rej;}))));
 
-    const rect = fourcut.getBoundingClientRect();
-    const width = Math.round(rect.width), height = Math.round(rect.height);
+    // ✅ offsetWidth/offsetHeight 사용 (잘림 방지)
+    const width = fourcut.offsetWidth;
+    const height = fourcut.offsetHeight;
     const options = { quality:0.85, width, height, canvasWidth:width, canvasHeight:height, pixelRatio:1, cacheBust:true };
 
     const dataUrl = await Promise.race([
@@ -263,6 +264,7 @@ btnMake.onclick = async ()=>{
     alert('이미지 생성 실패: ' + (e?.message||e));
   }finally{
     busyEl.hidden = true;
+    setTimeout(()=> busyEl.hidden = true, 100); // ✅ 로딩 안사라짐 방지
   }
 };
 
