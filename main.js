@@ -23,13 +23,10 @@ const gallery = $('#gallery');
 const btnCloseGallery = $('#btnCloseGallery');
 const btnWipeGallery = $('#btnWipeGallery');
 const busyEl = $('#busy');
-const backdrop = document.getElementById('backdrop');
+const backdrop = $('#backdrop');
 
-/* 커스텀 프레임 요소 */
-const frameOverlay  = $('#frameOverlay');
-const frameFile     = $('#frameFile');
-const btnFramePick  = $('#btnFramePick');
-const btnFrameClear = $('#btnFrameClear');
+/* color controls */
+const colR = $('#colR'), colG = $('#colG'), colB = $('#colB'), colHex = $('#colHex'), btnApplyColor = $('#btnApplyColor');
 
 /* ====== storage (idb → localStorage fallback) ====== */
 const idb = (window.idbKeyval && typeof window.idbKeyval.set === 'function') ? {
@@ -91,8 +88,41 @@ function renderPreview(){
     cell.appendChild(img);
     finalGrid.appendChild(cell);
   });
-  polaroidCap.textContent = fourcut.classList.contains('polaroid') ? (captionInput.value || ' ') : '';
+  polaroidCap.textContent = captionInput.value || ' ';
 }
+
+/* ====== frame color ====== */
+function rgbToHex(r,g,b){
+  const to = (n)=> Math.max(0, Math.min(255, n|0));
+  return '#' + [to(r),to(g),to(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+function hexToRgb(hex){
+  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return m ? { r:parseInt(m[1],16), g:parseInt(m[2],16), b:parseInt(m[3],16) } : {r:255,g:255,b:255};
+}
+function applyFrameColor(r,g,b){
+  const c = `rgb(${r}, ${g}, ${b})`;
+  fourcut.style.setProperty('--frame-bg', c);
+
+  // 밝기 보고 글자색(light/dark) 자동
+  const luma = 0.2126*r + 0.7152*g + 0.0722*b;
+  fourcut.classList.remove('light','dark');
+  fourcut.classList.add(luma < 140 ? 'dark' : 'light');
+
+  idbSet('frameColor', {r,g,b}).catch(()=>{});
+}
+function syncFromNumbers(){
+  const r = +colR.value||0, g = +colG.value||0, b = +colB.value||0;
+  colHex.value = rgbToHex(r,g,b);
+  applyFrameColor(r,g,b);
+}
+function syncFromHex(){
+  const {r,g,b} = hexToRgb(colHex.value);
+  colR.value = r; colG.value = g; colB.value = b;
+  applyFrameColor(r,g,b);
+}
+btnApplyColor.onclick = syncFromNumbers;
+colHex.addEventListener('input', syncFromHex);
 
 /* ====== camera ====== */
 async function startCamera(){
@@ -111,7 +141,6 @@ async function startCamera(){
     stream = await navigator.mediaDevices.getUserMedia(constraints);
     video.srcObject = stream;
 
-    // videoWidth / videoHeight 보장
     await new Promise(resolve=>{
       if (video.readyState >= 1 && video.videoWidth) return resolve();
       video.onloadedmetadata = ()=> resolve();
@@ -137,9 +166,9 @@ function stopCamera(){
 }
 
 /* ====== event wiring ====== */
-btnStart.onclick = startCamera;
-btnFlip.onclick = async ()=>{ facing = (facing === 'user') ? 'environment' : 'user'; await startCamera(); };
-btnReset.onclick = ()=>{
+$('#btnStart').onclick = startCamera;
+$('#btnFlip').onclick = async ()=>{ facing = (facing === 'user') ? 'environment' : 'user'; await startCamera(); };
+$('#btnReset').onclick = ()=>{
   shots = [];
   selected = new Set();
   finalDataUrl = null;
@@ -152,7 +181,6 @@ btnReset.onclick = ()=>{
   updateCounter();
 };
 
-/* ====== capture ====== */
 btnShot.onclick = ()=>{
   if(!stream) return;
   if(shots.length >= 6) return;
@@ -179,18 +207,7 @@ btnShot.onclick = ()=>{
   if(shots.length===6) btnShot.disabled = true;
 };
 
-/* frame pills */
-$$('.pill').forEach(p=>{
-  p.onclick = ()=>{
-    $$('.pill').forEach(x=>x.classList.remove('selected'));
-    p.classList.add('selected');
-    fourcut.classList.remove('classic','black','polaroid');
-    fourcut.classList.add(p.dataset.frame);
-    renderPreview();
-    setStep(3);
-  };
-});
-captionInput.addEventListener('input', ()=> renderPreview());
+captionInput.addEventListener('input', renderPreview);
 
 /* ====== make final image ====== */
 btnMake.onclick = async ()=>{
@@ -212,20 +229,16 @@ btnMake.onclick = async ()=>{
     const width = Math.round(rect.width);
     const height = Math.round(rect.height);
 
-    // busy 오버레이만 제외
     const filter = (node) => !(node.id === 'busy' || node.classList?.contains('busy'));
 
-    const options = {
-      quality: 0.85,
+    const dataUrl = await htmlToImage.toJpeg(fourcut, {
+      quality: 0.9,
       width, height,
-      canvasWidth: width,
-      canvasHeight: height,
+      canvasWidth: width, canvasHeight: height,
       pixelRatio: 1,
       cacheBust: true,
       filter
-    };
-
-    const dataUrl = await htmlToImage.toJpeg(fourcut, options);
+    });
     finalDataUrl = dataUrl;
 
     btnSave.disabled = false;
@@ -305,13 +318,11 @@ btnCloseGallery.onclick = closeGallerySmooth;
 backdrop.onclick = closeGallerySmooth;
 document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape' && !gallery.hidden) closeGallerySmooth(); });
 
-/* 전체 삭제 (IndexedDB에서 실제 삭제) */
+/* 전체 삭제 */
 btnWipeGallery.onclick = async ()=>{
   if(!confirm('갤러리를 모두 삭제할까요?')) return;
   const keys = await idbKeys();
-  for (const k of keys) {
-    if (String(k).startsWith('photo:')) await idbDel(k);
-  }
+  for (const k of keys) { if (String(k).startsWith('photo:')) await idbDel(k); }
   await renderGallery();
   alert('삭제 완료');
 };
@@ -329,7 +340,6 @@ async function renderGallery(){
     const img = document.createElement('img');
     img.src = it.image; img.title = new Date(it.createdAt).toLocaleString();
 
-    // 개별 삭제(X)도 idb에서 제거
     const del = document.createElement('button');
     del.className = 'del';
     del.innerHTML = '×';
@@ -345,41 +355,17 @@ async function renderGallery(){
   }
 }
 
-/* ====== custom frame upload ====== */
-btnFramePick.onclick = () => frameFile.click();
-
-frameFile.onchange = async (e) => {
-  const f = e.target.files?.[0];
-  if (!f) return;
-  const reader = new FileReader();
-  reader.onload = async () => {
-    const dataUrl = reader.result;
-    frameOverlay.src = dataUrl;
-    frameOverlay.hidden = false;
-    btnFrameClear.hidden = false;
-    try { await idbSet('customFrame', dataUrl); } catch {}
-  };
-  reader.readAsDataURL(f);
-};
-
-btnFrameClear.onclick = async () => {
-  frameOverlay.src = '';
-  frameOverlay.hidden = true;
-  btnFrameClear.hidden = true;
-  try { await idbDel('customFrame'); } catch {}
-};
-
-// 진입 시 커스텀 프레임 복원
-(async () => {
-  try {
-    const saved = await idbGet('customFrame');
-    if (saved) {
-      frameOverlay.src = saved;
-      frameOverlay.hidden = false;
-      btnFrameClear.hidden = false;
-    }
-  } catch {}
-})();
-
 /* ====== init ====== */
 updateCounter();
+renderPreview();
+// 색상 복원
+(async ()=>{
+  const saved = await idbGet('frameColor');
+  if (saved){
+    colR.value = saved.r; colG.value = saved.g; colB.value = saved.b;
+    colHex.value = rgbToHex(saved.r, saved.g, saved.b);
+    applyFrameColor(saved.r, saved.g, saved.b);
+  } else {
+    syncFromHex(); // 기본 #ffffff
+  }
+})();
