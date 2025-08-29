@@ -1,13 +1,14 @@
-
 // 유틸
 const $ = (q, r=document)=>r.querySelector(q);
-const $$ = (q, r=document)=>r.querySelectorAll(q);
 
 // 상태
 let stream=null;
 let shots=[];
 let selected=new Set();
 let finalDataUrl=null;
+let autoTimer=null;
+let autoRemain=0;
+let autoCount=0;
 
 // 카메라 시작
 async function startCamera(){
@@ -18,11 +19,44 @@ async function startCamera(){
     video.srcObject=stream;
     video.onloadedmetadata=()=> video.play();
     $("#btnShot").disabled=false;
-  }catch(e){
-    alert("카메라 접근 실패: 권한 확인 필요");
-  }
+  }catch(e){ alert("카메라 접근 실패"); }
 }
 function stopCamera(){ stream?.getTracks().forEach(t=>t.stop()); stream=null; }
+
+// 플래시
+function triggerFlash(){
+  const f=$("#flash");
+  f.classList.add("active");
+  setTimeout(()=>f.classList.remove("active"),250);
+}
+
+// 카운트다운 표시
+function showCountdown(text){
+  $("#countdown").textContent=text;
+}
+
+// 자동 촬영 (6장)
+async function startAutoCapture(){
+  shots=[]; selected.clear(); finalDataUrl=null;
+  renderThumbs(); renderPreview(); updateCounter();
+
+  autoCount=0;
+  autoRemain=6;
+
+  const interval=setInterval(()=>{
+    if(autoRemain<=0){
+      clearInterval(interval);
+      showCountdown("");
+      return;
+    }
+    showCountdown(autoRemain);
+    if(autoRemain===1){
+      triggerFlash();
+      doCapture();
+    }
+    autoRemain--;
+  },1000);
+}
 
 // 사진 찍기
 function doCapture(){
@@ -31,10 +65,13 @@ function doCapture(){
   canvas.width=video.videoWidth; canvas.height=video.videoHeight;
   canvas.getContext("2d").drawImage(video,0,0);
   const dataUrl=canvas.toDataURL("image/jpeg",0.9);
-  if(shots.length<6){ shots.push(dataUrl); renderThumbs(); updateCounter(); }
+  if(shots.length<6){ 
+    shots.push(dataUrl); 
+    renderThumbs(); updateCounter();
+  }
 }
 
-// 썸네일 표시
+// 썸네일
 function renderThumbs(){
   const grid=$("#thumbGrid"); grid.innerHTML="";
   shots.forEach((src,idx)=>{
@@ -72,7 +109,7 @@ async function makeFourcut(){
   $("#btnSave").disabled=false;
 }
 
-// 저장 + 갤러리
+// 저장
 async function saveImage(){
   if(!finalDataUrl) return;
   const id=Date.now();
@@ -82,7 +119,7 @@ async function saveImage(){
   alert("저장 완료!");
 }
 
-// 갤러리 렌더링
+// 갤러리
 async function renderGallery(){
   const grid=$("#galleryGrid"); grid.innerHTML="";
   const keys=Object.keys(localStorage).filter(k=>k.startsWith("photo:"));
@@ -101,12 +138,12 @@ async function renderGallery(){
   }
 }
 
-// 이벤트
-$("#btnFlip").onclick=()=>{ alert("카메라 전환 기능은 브라우저별 지원 필요"); };
-$("#btnReset").onclick=()=>{ shots=[];selected=new Set();finalDataUrl=null;
-  renderThumbs();renderPreview();updateCounter();
-};
-$("#btnShot").onclick=()=>doCapture();
+// 프레임 색상 변경
+$("#frameColor").oninput=()=>{ $(".fourcut").style.backgroundColor=$("#frameColor").value; };
+
+// 버튼 이벤트
+$("#btnStart").onclick=async()=>{ await startCamera(); startAutoCapture(); };
+$("#btnShot").onclick=()=>{ triggerFlash(); doCapture(); };
 $("#caption").oninput=()=>renderPreview();
 $("#btnMake").onclick=()=>makeFourcut();
 $("#btnSave").onclick=()=>saveImage();
@@ -116,5 +153,5 @@ $("#btnCloseGallery").onclick=()=>{ $("#gallery").classList.remove("open"); setT
 $("#btnWipeGallery").onclick=()=>{ if(confirm("모두 삭제?")){ Object.keys(localStorage).filter(k=>k.startsWith("photo:")).forEach(k=>localStorage.removeItem(k)); renderGallery(); } };
 $("#backdrop").onclick=()=>{ $("#gallery").classList.remove("open"); setTimeout(()=>$("#gallery").hidden=true,250); $("#backdrop").hidden=true; };
 
-// 시작
-startCamera();
+$("#btnReset").onclick=()=>{ shots=[];selected.clear();finalDataUrl=null;renderThumbs();renderPreview();updateCounter(); };
+$("#btnFlip").onclick=()=>{ alert("카메라 전환은 브라우저별 지원 필요"); };
