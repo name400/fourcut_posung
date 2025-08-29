@@ -7,20 +7,18 @@
   --busy-bg:#ffffffcc;
   --busy-fg:#111111;
 
-  /* 미리보기 기본·최대 폭 (보이는 화면용) */
+  /* Fourcut 크기 계산용 */
   --fc-min: 280px;
   --fc-base: 420px;
   --fc-max: 560px;
-
-  /* 상단바/버튼/여백 예상 높이(세로 제약 계산용) */
-  --top-ui-space: 220px;
+  --top-ui-space: 220px; /* 상단 여백 추정치 */
 }
 
 *{box-sizing:border-box}
 html,body{
   margin:0; min-height:100%;
   background:var(--bg); color:var(--text);
-  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
 }
 
 /* Topbar */
@@ -73,18 +71,17 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .input.small{width:120px}
 .color-controls{display:flex;align-items:center;gap:10px}
 
-/* Fourcut Preview (보이는 영역) */
+/* Fourcut Preview (결과 이미지 내부) */
 .preview{display:flex;align-items:center;justify-content:center;overflow:visible}
 .fourcut{
   position:relative;
-  /* 가용가로: 92vw, 기본 420px, 최대 560px
-     가용세로: (svh - 상단여백) * 2/3  → 세로가 부족하면 여기에 맞춰 더 줄어듦 */
+  /* 가로·세로 제약 중 작은 값으로 자동 결정 */
   width: clamp(
     var(--fc-min),
     min(92vw, var(--fc-base)),
     min(var(--fc-max), calc((100svh - var(--top-ui-space)) * 0.6667))
   );
-  aspect-ratio:2/3; /* 항상 동일 비율 */
+  aspect-ratio:2/3;
   border-radius:20px; padding:16px;
   background:var(--polaroid-bg); color:#111; margin:0 auto;
 }
@@ -128,36 +125,36 @@ button:disabled{opacity:.5;cursor:not-allowed}
 /* Busy overlay */
 .busy{position:absolute;inset:0;display:flex;gap:10px;align-items:center;justify-content:center;background:var(--busy-bg);color:var(--busy-fg);border-radius:16px;pointer-events:none}
 .spinner{width:18px;height:18px;border-radius:50%;border:3px solid #ffffff50;border-top-color:#fff;animation:spin 1s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes spin{to{transform:rotate(360deg)}
 
-/* ===== 반응형 & 해상도별 보정 ===== */
+/* ===== 반응형 ===== */
 
-/* 높이가 빡빡한 환경(노트북 1366×768, 1920×1080 창축소 등): 1열로 전환 */
+/* 높이 제한 → 노트북(1366x768 등)에서는 1열로 */
 @media (max-height: 900px){
   .container{grid-template-columns:1fr;max-width:860px}
   .cam{max-height:58svh}
 }
 
-/* 1920×1080 전체화면용: 여유 있게 2열 유지, 미리보기 최대폭 확장 */
+/* 1920x1080 데스크톱 */
 @media (min-width: 1600px) and (min-height: 900px){
   :root{ --fc-max: 640px; --top-ui-space: 200px; }
   .container{max-width:1400px}
 }
 
-/* 2560×1440 이상(와이드 데스크톱): 미리보기 폭 더 확대 */
+/* 2560x1440 와이드 */
 @media (min-width: 2300px) and (min-height: 1200px){
   :root{ --fc-max: 720px; --top-ui-space: 200px; }
   .container{max-width:1680px}
 }
 
-/* 일반 노트북(1366×768) 최적화 */
+/* 노트북(1366x768) 보정 */
 @media (max-width: 1400px) and (max-height: 820px){
   :root{ --top-ui-space: 240px; }
   .container{grid-template-columns:1fr;max-width:760px}
   .thumbs .thumb-grid{grid-template-columns:repeat(4,1fr)}
 }
 
-/* 휴대폰/좁은 패드 */
+/* 모바일 */
 @media (max-width:700px){
   .topbar{flex-wrap:wrap;gap:8px}
   .steps{font-size:14px}
@@ -165,8 +162,15 @@ button:disabled{opacity:.5;cursor:not-allowed}
   .thumbs .thumb-grid{grid-template-columns:repeat(3,1fr)}
   .cam{max-height:60svh}
 }
-
-/* 아주 좁은 화면 */
 @media (max-width:420px){
   .thumbs .thumb-grid{grid-template-columns:repeat(2,1fr)}
+}
+
+/* 모바일 강제 보정 (데스크톱 보기 켜도 적용) */
+@media (hover: none) and (pointer: coarse) {
+  .container{ grid-template-columns:1fr !important; max-width:100% !important; }
+  .fourcut{
+    width: min(92vw, calc(100svh * 0.66)) !important;
+    max-width: 420px !important;
+  }
 }
