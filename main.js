@@ -8,7 +8,7 @@ let selected=new Set();
 let finalDataUrl=null;
 let autoTimer=null;
 let autoRemain=0;
-let autoCount=0;
+let shotCount=0;
 
 // 카메라 시작
 async function startCamera(){
@@ -40,19 +40,20 @@ async function startAutoCapture(){
   shots=[]; selected.clear(); finalDataUrl=null;
   renderThumbs(); renderPreview(); updateCounter();
 
-  autoCount=0;
+  shotCount=0;
   autoRemain=6;
 
-  const interval=setInterval(()=>{
+  autoTimer=setInterval(()=>{
     if(autoRemain<=0){
-      clearInterval(interval);
+      clearInterval(autoTimer);
       showCountdown("");
       return;
     }
     showCountdown(autoRemain);
-    if(autoRemain===1){
+    if(autoRemain===1){ // 마지막 1초일 때 찍음
       triggerFlash();
       doCapture();
+      shotCount++;
     }
     autoRemain--;
   },1000);
@@ -106,6 +107,7 @@ async function makeFourcut(){
   const node=$("#fourcut");
   const canvas=await html2canvas(node,{backgroundColor:null,scale:2});
   finalDataUrl=canvas.toDataURL("image/jpeg",0.92);
+  $("#btnSave").disabled=true; // 합성 후 저장 가능
   $("#btnSave").disabled=false;
 }
 
