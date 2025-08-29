@@ -14,6 +14,16 @@ const dataURLtoBlob = (dataUrl)=>{
 };
 const blobToObjectURL = (blob)=> URL.createObjectURL(blob);
 
+// dataURL 재압축(LS 용량 절약용)
+async function recompressDataURL(dataUrl, quality=0.8){
+  const img = await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=dataUrl; });
+  const canvas = document.createElement('canvas');
+  const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+  canvas.width = w; canvas.height = h;
+  canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+  return canvas.toDataURL('image/jpeg', quality);
+}
+
 // unique id
 const genId = ()=> (crypto?.randomUUID ? crypto.randomUUID() : `id_${Date.now()}_${Math.random().toString(36).slice(2,8)}`);
 
@@ -26,13 +36,14 @@ function toast(msg){
     Object.assign(t.style,{
       position:'fixed',left:'50%',bottom:'24px',transform:'translateX(-50%)',
       background:'#111a',color:'#fff',padding:'10px 14px',borderRadius:'10px',
-      zIndex:99999,backdropFilter:'blur(2px)',fontWeight:'600'
+      zIndex:99999,backdropFilter:'blur(2px)',fontWeight:'600',transition:'opacity .2s'
     });
     document.body.appendChild(t);
   }
   t.textContent = msg;
   t.style.opacity = 1;
-  setTimeout(()=>{ t.style.opacity=0; }, 1800);
+  clearTimeout(t._tid);
+  t._tid = setTimeout(()=>{ t.style.opacity=0; }, 1800);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -73,6 +84,8 @@ const AUTO_LIMIT_SEC = 6;
 const EXPORT_BASE_W = 1200;  // 1200 x 1800 (2:3)
 const DPR_CAP = 2;
 const PHOTO_PREFIX = 'photo:';
+const LS_EVICT_BATCH = 2;        // 용량 꽉 찼을 때 한 번에 지울 “가장 오래된” 항목 수
+const RECOMP_QUALITIES = [0.85, 0.75, 0.65]; // LS 저장 재시도용 품질 단계
 
 /* ===== state ===== */
 let stream = null;
@@ -88,7 +101,7 @@ let autoRemain = 0;
 let flashEl = null;
 let bigCountdownEl = null;
 
-/* ===== robust storage: always try IDB first, then LS ===== */
+/* ===== robust storage: always IDB first, then LS with eviction ===== */
 const idb = window.idbKeyval || {};
 const ls = {
   set: (k, v)=>{ localStorage.setItem(k, JSON.stringify(v)); },
@@ -97,45 +110,44 @@ const ls = {
   keys: ()=> Object.keys(localStorage),
 };
 
-// Keys union
+// 모든 키 합집합
 async function dbAllKeys(){
   let a=[], b=[];
-  if (idb.keys) {
-    try { a = await idb.keys(); } catch(e){ console.warn('[IDB keys fail]', e); }
-  }
+  if (idb.keys) { try { a = await idb.keys(); } catch(e){ console.warn('[IDB keys fail]', e); } }
   try { b = ls.keys(); } catch(e){ console.warn('[LS keys fail]', e); }
   const set = new Set([...(a||[]).map(String), ...(b||[]).map(String)]);
   return [...set].filter(k => k.startsWith(PHOTO_PREFIX));
 }
 
-// Write image payload ({id, createdAt, image, type})
+// 오래된 키부터 오름차순
+async function listOldestFirst(){
+  const keys = await dbAllKeys();
+  const items = [];
+  for(const k of keys){
+    const v = await dbGetImage(k);
+    if (v) items.push({key:k, createdAt: v.createdAt || 0});
+  }
+  items.sort((a,b)=> a.createdAt - b.createdAt);
+  return items.map(x=>x.key);
+}
+
+// 개별 연산
 async function dbSetImage(k, payload){
-  // 1) try IDB (Blob도 저장 가능)
+  // 1) IDB 먼저 (Blob 포함 가능)
   if (idb.set) {
-    try { await idb.set(k, payload); return true; }
+    try { await idb.set(k, payload); return {ok:true, backend:'idb'}; }
     catch(e){ console.warn('[IDB set fail]', e); }
   }
-  // 2) fallback LS (dataURL만 추천)
-  try { ls.set(k, payload); return true; }
-  catch(e){ console.warn('[LS set fail]', e); return false; }
+  // 2) LS 폴백: 용량 초과 가능 → 예외 잡기
+  try { ls.set(k, payload); return {ok:true, backend:'ls'}; }
+  catch(e){ console.warn('[LS set fail]', e); return {ok:false, backend:'ls', err:e}; }
 }
-
-// Read image payload
 async function dbGetImage(k){
-  if (idb.get) {
-    try {
-      const v = await idb.get(k);
-      if (v != null) return v;
-    } catch(e){ console.warn('[IDB get fail]', e); }
-  }
+  if (idb.get) { try { const v = await idb.get(k); if (v!=null) return v; } catch(e){ console.warn('[IDB get fail]', e); } }
   try { return ls.get(k); } catch(e){ console.warn('[LS get fail]', e); return null; }
 }
-
-// Delete
 async function dbDelImage(k){
-  if (idb.del) {
-    try { await idb.del(k); } catch(e){ console.warn('[IDB del fail]', e); }
-  }
+  if (idb.del) { try { await idb.del(k); } catch(e){ console.warn('[IDB del fail]', e); } }
   try { ls.del(k); } catch(e){ console.warn('[LS del fail]', e); }
 }
 
@@ -325,7 +337,8 @@ async function composeFourcutCanvas(){
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(cap, outW/2, outH - Math.round(captionH/2));
   }
-  return canvas.toDataURL('image/jpeg', 0.95);
+  // 기본 품질 0.92 → 파일 너무 크면 LS 폴백에서 재압축 루틴 사용
+  return canvas.toDataURL('image/jpeg', 0.92);
 }
 
 /* ===== make / save / qr ===== */
@@ -336,19 +349,42 @@ on(btnMake,'click', async ()=>{
     // 1) compose
     finalDataUrl = await composeFourcutCanvas();
 
-    // 2) save (IDB-Blob → fallback LS-dataURL)
+    // 2) 저장 시도
     const id = genId();
-    let saved = false;
-    if (idb.set) {
-      try {
+    const key = `${PHOTO_PREFIX}${id}`;
+
+    // 2-1) IDB(Blob)
+    let result = {ok:false};
+    if (idb.set){
+      try{
         const blob = dataURLtoBlob(finalDataUrl);
-        saved = await dbSetImage(`${PHOTO_PREFIX}${id}`, { id, createdAt: Date.now(), image: blob, type:'blob' });
-      } catch(e){ console.warn('[blob save fail]', e); }
+        result = await dbSetImage(key, { id, createdAt: Date.now(), image: blob, type:'blob' });
+        if (result.ok){ toast('저장됨 (고용량/안정: IDB)'); }
+      }catch(e){ console.warn('[blob save fail]', e); }
     }
-    if (!saved){
-      const ok = await dbSetImage(`${PHOTO_PREFIX}${id}`, { id, createdAt: Date.now(), image: finalDataUrl, type:'dataurl' });
-      if (!ok){
-        toast('저장소 용량 제한으로 갤러리에 저장하지 못했습니다.');
+
+    // 2-2) IDB 실패 → LS(dataURL) + 재압축/자동삭제
+    if (!result.ok){
+      // 품질 단계별 재압축 시도
+      let dataForLS = finalDataUrl, saved = false;
+      for (const q of RECOMP_QUALITIES){
+        // 첫 루프는 원본, 이후 루프는 재압축
+        if (q !== RECOMP_QUALITIES[0]) dataForLS = await recompressDataURL(finalDataUrl, q);
+        result = await dbSetImage(key, { id, createdAt: Date.now(), image: dataForLS, type:'dataurl' });
+        if (result.ok){ toast(`저장됨 (저장공간 절약 q=${q})`); saved = true; break; }
+
+        // 용량 오류로 판단 → 오래된 항목 몇 개 자동 삭제 후 재시도
+        const oldestKeys = await listOldestFirst();
+        const victims = oldestKeys.slice(0, LS_EVICT_BATCH);
+        if (victims.length){
+          for (const vk of victims) await dbDelImage(vk);
+          toast(`공간 확보를 위해 오래된 ${victims.length}개 삭제 후 재시도`);
+          result = await dbSetImage(key, { id, createdAt: Date.now(), image: dataForLS, type:'dataurl' });
+          if (result.ok){ toast(`저장됨 (공간 확보 후 q=${q})`); saved = true; break; }
+        }
+      }
+      if (!saved){
+        toast('저장소 한도 때문에 저장하지 못했습니다(시크릿 모드/저용량 환경).');
       }
     }
 
