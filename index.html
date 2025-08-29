@@ -5,9 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>2025 보성제 | 네컷</title>
   <link rel="stylesheet" href="./style.css?v=20250829" />
-  <!-- 외부 라이브러리: html-to-image는 더 이상 사용하지 않음 -->
-  <script defer src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/idb-keyval.iife.min.js"></script>
   <script defer src="./main.js?v=20250829"></script>
 </head>
@@ -84,24 +81,9 @@
       <div class="actions">
         <button id="btnMake" class="primary" disabled>이미지 만들기</button>
         <button id="btnSave" class="ghost" disabled>저장</button>
-        <button id="btnQR" class="accent" disabled>QR</button>
       </div>
     </section>
   </main>
-
-  <!-- QR 모달 -->
-  <div id="qrModal" class="modal" hidden>
-    <div class="modal-card">
-      <canvas id="qrCanvas"></canvas>
-      <div id="qrLinkText" class="qr-link"></div>
-      <div class="qr-actions">
-        <button id="btnOpenViewer" class="primary">새 탭 열기</button>
-        <button id="btnSaveQR" class="ghost">QR 저장</button>
-        <button id="btnCopyLink" class="accent">링크 복사</button>
-        <button id="btnCloseQR" class="text">닫기</button>
-      </div>
-    </div>
-  </div>
 
   <!-- 갤러리 -->
   <aside id="gallery" class="drawer" hidden>
