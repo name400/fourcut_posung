@@ -114,6 +114,19 @@ button:disabled{opacity:.5;cursor:not-allowed}
 /* Backdrop */
 .backdrop{position:fixed;inset:0;background:#0008;z-index:8999}
 .backdrop[hidden]{display:none!important}
+/* 플래시 효과 */
+.flash {
+  position:fixed; inset:0; background:#fff; opacity:0; pointer-events:none;
+  z-index:9999; transition:opacity .3s;
+}
+.flash.active { opacity:1; }
+
+/* 카운트다운 */
+.big-countdown {
+  position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+  font-size:min(18vw,120px); font-weight:900; color:#fff;
+  text-shadow:0 0 20px #000; z-index:10000; pointer-events:none;
+}
 
 /* Responsive */
 @media (max-width: 767px){
@@ -125,3 +138,4 @@ button:disabled{opacity:.5;cursor:not-allowed}
   button,.input{font-size:16px;padding:12px}
   .cam{max-height:60svh}
 }
+
