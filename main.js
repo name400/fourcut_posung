@@ -13,7 +13,7 @@ const thumbGrid = $('#thumbGrid');
 const btnMake = $('#btnMake');
 const btnSave = $('#btnSave');
 const btnQR = $('#btnQR');
-const fourcut = $('#fourcut');          // 프리뷰(레이아웃 참고용)
+const fourcut = $('#fourcut');          // 레이아웃 프리뷰
 const finalGrid = $('#finalGrid');
 const captionInput = $('#caption');
 const polaroidCap = $('#polaroidCap');
@@ -22,31 +22,55 @@ const btnGallery = $('#btnGallery');
 const gallery = $('#gallery');
 const btnCloseGallery = $('#btnCloseGallery');
 const btnWipeGallery = $('#btnWipeGallery');
-const busyEl = $('#busy');
 const backdrop = $('#backdrop');
+// 로딩 오버레이는 사용 안함(혹시 남아있어도 비활성화)
+const busyEl = $('#busy'); if (busyEl) busyEl.hidden = true;
 
 const frameColor = $('#frameColor');
 const frameColorHex = $('#frameColorHex');
 
 /* ===== config ===== */
-const MIRROR_FRONT = true;       // 전면 카메라 미리보기/저장 모두 거울모드
+const MIRROR_FRONT = true;       // 전면 카메라: 미리보기/저장 모두 거울모드
 const AUTO_LIMIT_SEC = 6;        // 자동 촬영 카운트다운
-const EXPORT_BASE_W = 1200;      // 결과 이미지 기준 폭(px) 2:3 비율 → 1200x1800 기본
-const DPR_CAP = 2;               // 과한 해상도 방지
+const EXPORT_BASE_W = 1200;      // 결과 폭(px) → 2:3 비율로 1200x1800
+const DPR_CAP = 2;               // 과도한 해상도 방지
+const PHOTO_PREFIX = 'photo:';   // 갤러리 저장 키 프리픽스
 
-/* ===== storage (idb → fallback) ===== */
-const idb = (window.idbKeyval && typeof window.idbKeyval.set === 'function') ? {
-  set: window.idbKeyval.set,
-  get: window.idbKeyval.get,
-  keys: window.idbKeyval.keys,
-  del: window.idbKeyval.del,
-} : {
-  set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch(_) {} return Promise.resolve(); },
-  get: async (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch(_) { return null; } },
-  keys: async () => Object.keys(localStorage),
-  del: async (k) => { try { localStorage.removeItem(k); } catch(_) {} },
-};
-const { set: idbSet, get: idbGet, keys: idbKeys, del: idbDel } = idb;
+/* ===== resilient storage (IDB 우선, 실패 시 로컬스토리지) ===== */
+function lsSet(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){ console.warn('localStorage set fail', e); } }
+function lsGet(k){ try{ const s=localStorage.getItem(k); return s?JSON.parse(s):null; }catch(e){ return null; } }
+function lsDel(k){ try{ localStorage.removeItem(k); }catch(e){} }
+function lsKeys(){ try{ return Object.keys(localStorage); }catch(e){ return []; } }
+
+async function dbSet(k, v){
+  let ok=false;
+  if (window.idbKeyval?.set){
+    try{ await window.idbKeyval.set(k, v); ok=true; }catch(e){ console.warn('IDB set fail -> fallback ls', e); }
+  }
+  if (!ok) lsSet(k, v);
+}
+async function dbGet(k){
+  if (window.idbKeyval?.get){
+    try{ const v = await window.idbKeyval.get(k); if (v!=null) return v; }catch(e){ console.warn('IDB get fail -> try ls', e); }
+  }
+  return lsGet(k);
+}
+async function dbDel(k){
+  if (window.idbKeyval?.del){
+    try{ await window.idbKeyval.del(k); }catch(e){ console.warn('IDB del fail -> ls', e); }
+  }
+  lsDel(k);
+}
+async function dbAllKeys(){
+  let a=[], b=[];
+  if (window.idbKeyval?.keys){
+    try{ a = await window.idbKeyval.keys(); }catch(e){ console.warn('IDB keys fail', e); }
+  }
+  b = lsKeys();
+  // 문자열로 통일 + 중복 제거
+  const set = new Set([...a.map(String), ...b.map(String)]);
+  return [...set];
+}
 
 /* ===== state ===== */
 let stream = null;
@@ -157,7 +181,7 @@ function stopAutoTimer(){ if(autoTimer){ clearInterval(autoTimer); autoTimer=nul
 function showCountdown(t){ shotCounter.textContent = `${shots.length} / 6  (${t})`; }
 function clearCountdown(){ shotCounter.textContent = `${shots.length} / 6`; }
 
-/* ===== capture (미리보기=거울, 저장도 동일 방향) ===== */
+/* ===== capture (저장도 거울방향) ===== */
 function doCapture(){
   if(shotLock) return;
   if(!stream || shots.length>=6) return;
@@ -199,7 +223,7 @@ frameColor?.addEventListener('input', e=> setPolaroidColor(e.target.value));
 frameColorHex?.addEventListener('input', e=> setPolaroidColor(e.target.value));
 setPolaroidColor(frameColor?.value || '#ffffff');
 
-/* ===== utils ===== */
+/* ===== utils (이미지 로드 & 그리기) ===== */
 function loadImage(src){
   return new Promise((resolve,reject)=>{
     const img = new Image();
@@ -208,24 +232,14 @@ function loadImage(src){
     img.src = src;
   });
 }
-/** object-fit: cover 처럼 drawImage */
 function drawCover(ctx, img, dx, dy, dW, dH){
   const sW = img.naturalWidth || img.width;
   const sH = img.naturalHeight || img.height;
   const sRatio = sW / sH;
   const dRatio = dW / dH;
   let sx=0, sy=0, sw=sW, sh=sH;
-  if (sRatio > dRatio) {
-    // 소스가 더 가로로 김 → 좌우 자르기
-    const newW = sh * dRatio;
-    sx = (sw - newW) / 2;
-    sw = newW;
-  } else {
-    // 소스가 더 세로로 김 → 상하 자르기
-    const newH = sw / dRatio;
-    sy = (sh - newH) / 2;
-    sh = newH;
-  }
+  if (sRatio > dRatio) { const newW = sh * dRatio; sx = (sw - newW) / 2; sw = newW; }
+  else { const newH = sw / dRatio; sy = (sh - newH) / 2; sh = newH; }
   ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dW, dH);
 }
 function roundRect(ctx, x, y, w, h, r){
@@ -239,9 +253,8 @@ function roundRect(ctx, x, y, w, h, r){
   ctx.closePath();
 }
 
-/* ===== 캔버스 합성 (잘림/무한로딩 근본 해결) ===== */
+/* ===== 캔버스 합성 ===== */
 async function composeFourcutCanvas(){
-  // 1) 출력 캔버스 크기 결정 (2:3 고정)
   const dpr = Math.min(DPR_CAP, window.devicePixelRatio || 1);
   const outW = Math.round(EXPORT_BASE_W * dpr);
   const outH = Math.round(outW * 1.5);         // 2:3
@@ -250,20 +263,18 @@ async function composeFourcutCanvas(){
   canvas.width = outW; canvas.height = outH;
   const ctx = canvas.getContext('2d');
 
-  // 2) 스타일 참조
   const bg = getComputedStyle(document.documentElement).getPropertyValue('--polaroid-bg').trim() || '#fff';
-  const pad = Math.round(32 * dpr);            // 바깥 패딩
-  const gap = Math.round(20 * dpr);            // 셀 사이 간격
-  const radius = Math.round(36 * dpr);         // 폴라로이드 모서리
-  const headerH = Math.round(96 * dpr);        // 상단 로고+제목 영역
-  const captionH = Math.round(80 * dpr);       // 하단 캡션 영역
+  const pad = Math.round(32 * dpr);
+  const gap = Math.round(20 * dpr);
+  const radius = Math.round(36 * dpr);
+  const headerH = Math.round(96 * dpr);
+  const captionH = Math.round(80 * dpr);
   const gridPadTop = Math.round(12 * dpr);
 
-  // 3) 배경(라운드 카드)
-  ctx.fillStyle = bg;
-  roundRect(ctx, 0, 0, outW, outH, radius); ctx.fill();
+  // 배경
+  ctx.fillStyle = bg; roundRect(ctx, 0, 0, outW, outH, radius); ctx.fill();
 
-  // 4) 상단 로고/타이틀
+  // 헤더
   const logoEl = fourcut.querySelector('.fc-logo');
   const titleText = (fourcut.querySelector('.fc-title')?.textContent || '').trim();
   if (logoEl) {
@@ -278,14 +289,14 @@ async function composeFourcutCanvas(){
   ctx.textBaseline = 'middle';
   ctx.fillText(titleText || '', pad + Math.round(80*dpr), pad + Math.round(headerH/2));
 
-  // 5) 2x2 그리드
+  // 2x2 그리드
   const innerX = pad;
   const innerY = pad + headerH + gridPadTop;
   const innerW = outW - pad*2;
   const innerH = outH - pad - captionH - innerY;
 
   const cellW = Math.floor((innerW - gap) / 2);
-  const cellH = Math.floor(cellW * 4 / 3);     // 3:4 비율 셀
+  const cellH = Math.floor(cellW * 4 / 3);     // 3:4 셀
   const rowGap = gap;
 
   const selIdx = [...selected].slice(0,4);
@@ -297,19 +308,18 @@ async function composeFourcutCanvas(){
       const x = innerX + c * (cellW + gap);
       const y = innerY + r * (cellH + rowGap);
 
-      // 셀 베이스(배경)
       ctx.save();
       ctx.fillStyle = '#dbe1ee';
       roundRect(ctx, x, y, cellW, cellH, Math.round(24*dpr)); ctx.fill();
       ctx.clip();
-      // 이미지 cover
+
       const img = imgs[idx];
       if (img) drawCover(ctx, img, x, y, cellW, cellH);
       ctx.restore();
     }
   }
 
-  // 6) 하단 캡션
+  // 캡션
   const cap = (captionInput?.value || '').trim();
   if (cap){
     ctx.fillStyle = '#111';
@@ -325,26 +335,27 @@ async function composeFourcutCanvas(){
 /* ===== make / save / qr ===== */
 btnMake?.addEventListener('click', async ()=>{
   if(selected.size!==4) return alert('4장을 선택하세요');
-  if(renderLock) return;
-  renderLock = true;
+  if(renderLock) return; renderLock = true;
   setStep(4);
-  busyEl && (busyEl.hidden = false);
 
   try{
-    // 캔버스 합성(빠르고 안정적)
     finalDataUrl = await composeFourcutCanvas();
 
-    btnSave.disabled = btnQR.disabled = false;
-
-    // 갤러리 저장
+    // ✅ 저장 (IDB 우선, 실패 시 LS)
     const id = crypto.randomUUID();
-    await idbSet(`photo:${id}`, { id, createdAt: Date.now(), image: finalDataUrl });
+    const payload = { id, createdAt: Date.now(), image: finalDataUrl };
+    await dbSet(`${PHOTO_PREFIX}${id}`, payload);
+
+    // ✅ 갤러리 열려 있으면 즉시 갱신
+    if (gallery && !gallery.hidden) await renderGallery();
+
+    // 버튼 활성화
+    btnSave.disabled = btnQR.disabled = false;
   }catch(e){
     console.error(e);
-    alert('이미지 생성 실패: ' + (e?.message||e));
+    alert('이미지 생성/저장 실패: ' + (e?.message||e));
   }finally{
-    if (busyEl) busyEl.hidden = true;  // ✅ 항상 해제
-    renderLock = false;
+    renderLock=false;
   }
 });
 
@@ -381,51 +392,36 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !gallery.hidden
 
 btnWipeGallery?.addEventListener('click', async ()=>{
   if(!confirm('갤러리를 모두 삭제할까요?')) return;
-  const keys = await idbKeys();
-  for(const k of keys) if(String(k).startsWith('photo:')) await idbDel(k);
+  const keys = await dbAllKeys();
+  for(const k of keys){ if(String(k).startsWith(PHOTO_PREFIX)) await dbDel(k); }
   await renderGallery();
 });
 
 async function renderGallery(){
   const grid = $('#galleryGrid'); if(!grid) return; grid.innerHTML='';
-  const keys = await idbKeys();
+  const keys = await dbAllKeys();
   const items = [];
-  for(const k of keys){ if(String(k).startsWith('photo:')) items.push(await idbGet(k)); }
+  for(const k of keys){
+    if(String(k).startsWith(PHOTO_PREFIX)){
+      const v = await dbGet(k);
+      if (v) items.push(v);
+    }
+  }
   items.sort((a,b)=>b.createdAt-a.createdAt);
 
   for(const it of items){
-    if(!it || !it.image) continue;
+    const wrap=document.createElement('div'); wrap.className='g-item';
+    const img=document.createElement('img');
+    img.src=it.image; img.alt='saved fourcut'; img.title=new Date(it.createdAt).toLocaleString();
+    img.style.cursor='zoom-in';
+    img.onclick=()=> window.open(it.image,'_blank');
 
-    // ✅ 썸네일 래퍼(2:3 비율)
-    const wrap = document.createElement('div');
-    wrap.className = 'g-item';
+    const del=document.createElement('button'); del.className='del'; del.innerHTML='×';
+    del.onclick=async()=>{ if(!confirm('이 이미지를 삭제할까요?')) return; await dbDel(`${PHOTO_PREFIX}${it.id}`); await renderGallery(); };
 
-    // ✅ 이미지: contain으로 표시
-    const img = document.createElement('img');
-    img.src = it.image;
-    img.alt = 'saved fourcut';
-    img.title = new Date(it.createdAt).toLocaleString();
-    // 원본 새 탭 열기(편의)
-    img.style.cursor = 'zoom-in';
-    img.onclick = () => window.open(it.image, '_blank');
-
-    // 삭제 버튼
-    const del = document.createElement('button');
-    del.className = 'del';
-    del.innerHTML = '×';
-    del.onclick = async () => {
-      if(!confirm('이 이미지를 삭제할까요?')) return;
-      await idbDel(`photo:${it.id}`);
-      await renderGallery();
-    };
-
-    wrap.appendChild(img);
-    wrap.appendChild(del);
-    grid.appendChild(wrap);
+    wrap.appendChild(img); wrap.appendChild(del); grid.appendChild(wrap);
   }
 }
 
-
 /* ===== init ===== */
 updateCounter();
-
