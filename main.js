@@ -4,20 +4,37 @@ const $$ = (q, r=document)=>r.querySelectorAll(q);
 const on = (el, ev, fn)=> el && el.addEventListener(ev, fn);
 const setHidden = (el, v)=>{ if(el) el.hidden = !!v; };
 
-// 문자열↔Blob
+// dataURL <-> Blob
 const dataURLtoBlob = (dataUrl)=>{
   const [head, body] = dataUrl.split(',');
-  const mime = head.match(/data:(.*?);base64/)[1] || 'image/jpeg';
+  const mime = (head.match(/data:(.*?);base64/)||[])[1] || 'image/jpeg';
   const bin = atob(body); const len = bin.length; const u8 = new Uint8Array(len);
   for(let i=0;i<len;i++) u8[i] = bin.charCodeAt(i);
   return new Blob([u8], { type: mime });
 };
 const blobToObjectURL = (blob)=> URL.createObjectURL(blob);
 
-// 고유 ID
+// unique id
 const genId = ()=> (crypto?.randomUUID ? crypto.randomUUID() : `id_${Date.now()}_${Math.random().toString(36).slice(2,8)}`);
 
-// DOM 준비
+// lightweight toast
+function toast(msg){
+  let t = document.getElementById('toast');
+  if(!t){
+    t = document.createElement('div');
+    t.id='toast';
+    Object.assign(t.style,{
+      position:'fixed',left:'50%',bottom:'24px',transform:'translateX(-50%)',
+      background:'#111a',color:'#fff',padding:'10px 14px',borderRadius:'10px',
+      zIndex:99999,backdropFilter:'blur(2px)',fontWeight:'600'
+    });
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = 1;
+  setTimeout(()=>{ t.style.opacity=0; }, 1800);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
 /* ===== elements ===== */
 const video = $('#video');
@@ -71,69 +88,55 @@ let autoRemain = 0;
 let flashEl = null;
 let bigCountdownEl = null;
 
-/* ===== robust storage layer ===== */
+/* ===== robust storage: always try IDB first, then LS ===== */
 const idb = window.idbKeyval || {};
 const ls = {
-  set: (k, v)=>{ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} },
-  get: (k)=>{ try{ const s=localStorage.getItem(k); return s?JSON.parse(s):null; }catch(e){ return null; } },
-  del: (k)=>{ try{ localStorage.removeItem(k); }catch(e){} },
-  keys: ()=>{ try{ return Object.keys(localStorage); }catch(e){ return []; } }
+  set: (k, v)=>{ localStorage.setItem(k, JSON.stringify(v)); },
+  get: (k)=>{ const s=localStorage.getItem(k); return s?JSON.parse(s):null; },
+  del: (k)=>{ localStorage.removeItem(k); },
+  keys: ()=> Object.keys(localStorage),
 };
 
-let HAS_IDB = false;
-(async function probeIDB(){
-  try{
-    if(idb.set && idb.get && idb.del){
-      const probeKey = '__probe__';
-      await idb.set(probeKey, {t:Date.now()});
-      await idb.get(probeKey);
-      await idb.del(probeKey);
-      HAS_IDB = true;
-    }
-  }catch{ HAS_IDB = false; }
-})();
-
-// keys 합치기
+// Keys union
 async function dbAllKeys(){
   let a=[], b=[];
-  if(HAS_IDB && idb.keys){ try{ a = await idb.keys(); }catch{} }
-  try{ b = ls.keys(); }catch{}
-  const s = new Set([...a.map(String), ...b.map(String)]);
-  return [...s].filter(k=>k.startsWith(PHOTO_PREFIX));
+  if (idb.keys) {
+    try { a = await idb.keys(); } catch(e){ console.warn('[IDB keys fail]', e); }
+  }
+  try { b = ls.keys(); } catch(e){ console.warn('[LS keys fail]', e); }
+  const set = new Set([...(a||[]).map(String), ...(b||[]).map(String)]);
+  return [...set].filter(k => k.startsWith(PHOTO_PREFIX));
 }
 
-// set/get/del
-async function dbSetImage(key, payload){
-  // payload: { id, createdAt, image: Blob | dataURL(string), type: 'blob'|'dataurl' }
-  if(HAS_IDB){
-    try{
-      await idb.set(key, payload);  // Blob 저장 가능
-      return true;
-    }catch(e){ console.warn('[IDB set fail]', e); }
+// Write image payload ({id, createdAt, image, type})
+async function dbSetImage(k, payload){
+  // 1) try IDB (Blob도 저장 가능)
+  if (idb.set) {
+    try { await idb.set(k, payload); return true; }
+    catch(e){ console.warn('[IDB set fail]', e); }
   }
-  // fallback: localStorage (용량 제한 경고)
-  try{
-    ls.set(key, payload);
-    return true;
-  }catch(e){
-    console.warn('[LS set fail]', e);
-    return false;
-  }
+  // 2) fallback LS (dataURL만 추천)
+  try { ls.set(k, payload); return true; }
+  catch(e){ console.warn('[LS set fail]', e); return false; }
 }
-async function dbGetImage(key){
-  if(HAS_IDB){
-    try{
-      const v = await idb.get(key);
-      if(v!=null) return v;
-    }catch(e){ console.warn('[IDB get fail]', e); }
+
+// Read image payload
+async function dbGetImage(k){
+  if (idb.get) {
+    try {
+      const v = await idb.get(k);
+      if (v != null) return v;
+    } catch(e){ console.warn('[IDB get fail]', e); }
   }
-  return ls.get(key);
+  try { return ls.get(k); } catch(e){ console.warn('[LS get fail]', e); return null; }
 }
-async function dbDelImage(key){
-  if(HAS_IDB){
-    try{ await idb.del(key); }catch(e){ console.warn('[IDB del fail]', e); }
+
+// Delete
+async function dbDelImage(k){
+  if (idb.del) {
+    try { await idb.del(k); } catch(e){ console.warn('[IDB del fail]', e); }
   }
-  ls.del(key);
+  try { ls.del(k); } catch(e){ console.warn('[LS del fail]', e); }
 }
 
 /* ===== UI helpers ===== */
@@ -330,30 +333,28 @@ on(btnMake,'click', async ()=>{
   if(selected.size!==4) return alert('4장을 선택하세요');
   if(renderLock) return; renderLock=true; setStep(4);
   try{
-    // 1) 합성 → dataURL
+    // 1) compose
     finalDataUrl = await composeFourcutCanvas();
 
-    // 2) 저장 (IDB 우선: Blob, 실패 시 LS: dataURL)
+    // 2) save (IDB-Blob → fallback LS-dataURL)
     const id = genId();
     let saved = false;
-    if (HAS_IDB){
-      try{
+    if (idb.set) {
+      try {
         const blob = dataURLtoBlob(finalDataUrl);
         saved = await dbSetImage(`${PHOTO_PREFIX}${id}`, { id, createdAt: Date.now(), image: blob, type:'blob' });
-      }catch(e){ console.warn('[blob save fail]', e); }
+      } catch(e){ console.warn('[blob save fail]', e); }
     }
     if (!saved){
-      // fallback: dataURL in LS (용량 제한 가능)
       const ok = await dbSetImage(`${PHOTO_PREFIX}${id}`, { id, createdAt: Date.now(), image: finalDataUrl, type:'dataurl' });
       if (!ok){
-        alert('저장소 용량 제한으로 갤러리에 저장하지 못했습니다.\n(브라우저 시크릿 모드/스토리지 제한 가능)');
+        toast('저장소 용량 제한으로 갤러리에 저장하지 못했습니다.');
       }
     }
 
     if(btnSave) btnSave.disabled=false;
     if(btnQR) btnQR.disabled=false;
 
-    // 갤러리 열려 있으면 새로고침
     if (gallery && !gallery.hidden) await renderGallery();
   }catch(e){
     console.error('[make]', e); alert('이미지 생성/저장 실패');
@@ -401,6 +402,13 @@ async function renderGallery(){
   const items = [];
   for(const k of keys){ const v = await dbGetImage(k); if(v) items.push(v); }
   items.sort((a,b)=>b.createdAt-a.createdAt);
+
+  if(items.length===0){
+    const empty = document.createElement('div');
+    empty.style.cssText = 'grid-column:1/-1;color:#9aa3b2;text-align:center;padding:16px;';
+    empty.textContent = '갤러리에 저장된 이미지가 없습니다.';
+    grid.appendChild(empty);
+  }
 
   for(const it of items){
     const wrap=document.createElement('div'); wrap.className='g-item';
