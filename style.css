@@ -6,6 +6,9 @@
   --polaroid-bg:#ffffff;
   --busy-bg:#ffffffcc;
   --busy-fg:#111111;
+
+  /* 미리보기 가로폭(보이는 화면), 내보내기는 main.js에서 1080x1620 고정 */
+  --fc-width: min(92vw, 420px);
 }
 
 *{box-sizing:border-box}
@@ -60,8 +63,17 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .color-controls{display:flex;align-items:center;gap:10px}
 
 /* Fourcut Preview (결과 이미지 내부) */
-.preview{display:flex;align-items:center;justify-content:center}
-.fourcut{position:relative;width:100%;max-width:420px;border-radius:20px;padding:16px;background:var(--polaroid-bg);color:#111;margin:0 auto}
+.preview{display:flex;align-items:center;justify-content:center;overflow:visible} /* 잘림 방지 */
+.fourcut{
+  position:relative;
+  width:var(--fc-width);
+  aspect-ratio:2/3; /* 화면 표시 비율 고정 */
+  border-radius:20px;
+  padding:16px;
+  background:var(--polaroid-bg);
+  color:#111;
+  margin:0 auto;
+}
 .fourcut.polaroid{padding-bottom:42px}
 
 /* 상단 헤더(로고+제목) */
@@ -114,10 +126,8 @@ button:disabled{opacity:.5;cursor:not-allowed}
   .steps{font-size:14px}
   button,.input{font-size:16px;padding:12px}
   .thumbs .thumb-grid{grid-template-columns:repeat(3,1fr)}
-  .fourcut{max-width:360px}
   .cam{max-height:60vh}
 }
 @media (max-width:420px){
   .thumbs .thumb-grid{grid-template-columns:repeat(2,1fr)}
-  .fourcut{max-width:320px}
 }
