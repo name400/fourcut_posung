@@ -4,11 +4,12 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>2025 보성제 | 네컷</title>
-  <link rel="stylesheet" href="./style.css" />
-  <script defer src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js"></script>
+  <link rel="stylesheet" href="./style.css?v=20250829" />
+  <!-- 외부 라이브러리: html-to-image는 더 이상 사용하지 않음 -->
+  <script defer src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/idb-keyval.iife.min.js"></script>
-  <script defer src="./main.js"></script>
+  <script defer src="./main.js?v=20250829"></script>
 </head>
 <body>
   <!-- 상단 바 -->
@@ -29,6 +30,7 @@
     </div>
   </header>
 
+  <!-- 메인 -->
   <main class="container">
     <!-- 카메라 -->
     <section class="panel cam-panel">
@@ -56,7 +58,7 @@
       </div>
     </section>
 
-    <!-- 결과 -->
+    <!-- 결과 미리보기 + 옵션 -->
     <section class="panel result">
       <div class="card preview">
         <div id="fourcut" class="fourcut polaroid">
@@ -110,5 +112,8 @@
         <button id="btnCloseGallery" class="text">닫기</button>
       </div>
     </div>
-    <div id="galleryGrid" class="drawer-bo
-
+    <div id="galleryGrid" class="drawer-body"></div>
+  </aside>
+  <div id="backdrop" class="backdrop" hidden></div>
+</body>
+</html>
