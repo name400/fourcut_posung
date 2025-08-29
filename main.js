@@ -102,6 +102,7 @@ let flashEl = null;
 let bigCountdownEl = null;
 
 /* ===== robust storage: always IDB first, then LS with eviction ===== */
+// ===== robust storage =====
 const idb = window.idbKeyval || {};
 const ls = {
   set: (k, v)=>{ localStorage.setItem(k, JSON.stringify(v)); },
@@ -110,42 +111,48 @@ const ls = {
   keys: ()=> Object.keys(localStorage),
 };
 
-// 모든 키 합집합
 async function dbAllKeys(){
   let a=[], b=[];
+  // 일부 브라우저에서 idb.keys()가 reject 되는 케이스 대비
   if (idb.keys) { try { a = await idb.keys(); } catch(e){ console.warn('[IDB keys fail]', e); } }
   try { b = ls.keys(); } catch(e){ console.warn('[LS keys fail]', e); }
   const set = new Set([...(a||[]).map(String), ...(b||[]).map(String)]);
-  return [...set].filter(k => k.startsWith(PHOTO_PREFIX));
+  // 네임스페이스 필터링 확실히
+  return [...set].filter(k => k && typeof k === 'string' && k.startsWith('photo:'));
 }
 
-// 오래된 키부터 오름차순
 async function listOldestFirst(){
   const keys = await dbAllKeys();
   const items = [];
   for(const k of keys){
-    const v = await dbGetImage(k);
-    if (v) items.push({key:k, createdAt: v.createdAt || 0});
+    try{
+      const v = await dbGetImage(k);
+      if (v) items.push({key:k, createdAt: v.createdAt || 0});
+    }catch(e){ console.warn('[get for sort fail]', e); }
   }
   items.sort((a,b)=> a.createdAt - b.createdAt);
   return items.map(x=>x.key);
 }
 
-// 개별 연산
 async function dbSetImage(k, payload){
-  // 1) IDB 먼저 (Blob 포함 가능)
+  // 1) IDB 우선
   if (idb.set) {
     try { await idb.set(k, payload); return {ok:true, backend:'idb'}; }
     catch(e){ console.warn('[IDB set fail]', e); }
   }
-  // 2) LS 폴백: 용량 초과 가능 → 예외 잡기
+  // 2) LS 폴백 (용량 초과 대비)
   try { ls.set(k, payload); return {ok:true, backend:'ls'}; }
   catch(e){ console.warn('[LS set fail]', e); return {ok:false, backend:'ls', err:e}; }
 }
+
 async function dbGetImage(k){
-  if (idb.get) { try { const v = await idb.get(k); if (v!=null) return v; } catch(e){ console.warn('[IDB get fail]', e); } }
+  if (idb.get) {
+    try { const v = await idb.get(k); if (v!=null) return v; }
+    catch(e){ console.warn('[IDB get fail]', e); }
+  }
   try { return ls.get(k); } catch(e){ console.warn('[LS get fail]', e); return null; }
 }
+
 async function dbDelImage(k){
   if (idb.del) { try { await idb.del(k); } catch(e){ console.warn('[IDB del fail]', e); } }
   try { ls.del(k); } catch(e){ console.warn('[LS del fail]', e); }
@@ -346,56 +353,61 @@ on(btnMake,'click', async ()=>{
   if(selected.size!==4) return alert('4장을 선택하세요');
   if(renderLock) return; renderLock=true; setStep(4);
   try{
-    // 1) compose
     finalDataUrl = await composeFourcutCanvas();
 
-    // 2) 저장 시도
     const id = genId();
-    const key = `${PHOTO_PREFIX}${id}`;
+    const key = `photo:${id}`;
 
-    // 2-1) IDB(Blob)
+    // 1) IDB(Blob) 우선
     let result = {ok:false};
-    if (idb.set){
+    if (window.idbKeyval && idb.set){
       try{
         const blob = dataURLtoBlob(finalDataUrl);
         result = await dbSetImage(key, { id, createdAt: Date.now(), image: blob, type:'blob' });
-        if (result.ok){ toast('저장됨 (고용량/안정: IDB)'); }
+        if (result.ok) toast('저장 완료 (고용량 안전: IDB)');
       }catch(e){ console.warn('[blob save fail]', e); }
     }
 
-    // 2-2) IDB 실패 → LS(dataURL) + 재압축/자동삭제
+    // 2) IDB 실패 → LS(dataURL) 폴백: 재압축 + 자동 정리
     if (!result.ok){
-      // 품질 단계별 재압축 시도
+      const QUALS = [0.85, 0.75, 0.65]; // 재압축 단계
       let dataForLS = finalDataUrl, saved = false;
-      for (const q of RECOMP_QUALITIES){
-        // 첫 루프는 원본, 이후 루프는 재압축
-        if (q !== RECOMP_QUALITIES[0]) dataForLS = await recompressDataURL(finalDataUrl, q);
-        result = await dbSetImage(key, { id, createdAt: Date.now(), image: dataForLS, type:'dataurl' });
-        if (result.ok){ toast(`저장됨 (저장공간 절약 q=${q})`); saved = true; break; }
 
-        // 용량 오류로 판단 → 오래된 항목 몇 개 자동 삭제 후 재시도
-        const oldestKeys = await listOldestFirst();
-        const victims = oldestKeys.slice(0, LS_EVICT_BATCH);
-        if (victims.length){
-          for (const vk of victims) await dbDelImage(vk);
-          toast(`공간 확보를 위해 오래된 ${victims.length}개 삭제 후 재시도`);
-          result = await dbSetImage(key, { id, createdAt: Date.now(), image: dataForLS, type:'dataurl' });
-          if (result.ok){ toast(`저장됨 (공간 확보 후 q=${q})`); saved = true; break; }
-        }
+      for (let i=0;i<QUALS.length && !saved;i++){
+        if (i>0) dataForLS = await recompressDataURL(finalDataUrl, QUALS[i]);
+
+        // 2-1) 그대로 시도
+        result = await dbSetImage(key, { id, createdAt: Date.now(), image: dataForLS, type:'dataurl' });
+        if (result.ok){ toast(`저장 완료 (LS q=${QUALS[i]})`); saved = true; break; }
+
+        // 2-2) 오래된 것 몇 개 삭제 후 재시도
+        const victims = (await listOldestFirst()).slice(0, 2);
+        for (const vk of victims) await dbDelImage(vk);
+        if (victims.length) toast(`공간 확보를 위해 ${victims.length}개 삭제 후 재시도`);
+
+        result = await dbSetImage(key, { id, createdAt: Date.now(), image: dataForLS, type:'dataurl' });
+        if (result.ok){ toast(`저장 완료 (공간확보 q=${QUALS[i]})`); saved = true; break; }
       }
+
       if (!saved){
-        toast('저장소 한도 때문에 저장하지 못했습니다(시크릿 모드/저용량 환경).');
+        toast('저장 실패: 저장소 한도/시크릿 모드 가능성');
       }
     }
 
-    if(btnSave) btnSave.disabled=false;
-    if(btnQR) btnQR.disabled=false;
+    btnSave && (btnSave.disabled=false);
+    btnQR && (btnQR.disabled=false);
 
-    if (gallery && !gallery.hidden) await renderGallery();
+    // 갤러리 열려 있든 아니든, 저장 직후 리스트 갱신 보장
+    await renderGallery();
+
   }catch(e){
-    console.error('[make]', e); alert('이미지 생성/저장 실패');
-  }finally{ renderLock=false; }
+    console.error('[make]', e);
+    alert('이미지 생성/저장 실패');
+  }finally{
+    renderLock=false;
+  }
 });
+
 
 on(btnSave,'click', ()=>{
   if(!finalDataUrl) return;
@@ -433,10 +445,20 @@ on(btnWipeGallery,'click', async ()=>{
 });
 
 async function renderGallery(){
-  const grid = $('#galleryGrid'); if(!grid) return; grid.innerHTML='';
-  const keys = await dbAllKeys();
+  const grid = $('#galleryGrid'); if(!grid) return;
+  grid.innerHTML='';
+
+  let keys = [];
+  try { keys = await dbAllKeys(); }
+  catch(e){ console.warn('[dbAllKeys fail]', e); }
+
   const items = [];
-  for(const k of keys){ const v = await dbGetImage(k); if(v) items.push(v); }
+  for(const k of (keys||[])){
+    try{
+      const v = await dbGetImage(k);
+      if(v) items.push(v);
+    }catch(e){ console.warn('[dbGetImage fail]', e); }
+  }
   items.sort((a,b)=>b.createdAt-a.createdAt);
 
   if(items.length===0){
@@ -444,29 +466,33 @@ async function renderGallery(){
     empty.style.cssText = 'grid-column:1/-1;color:#9aa3b2;text-align:center;padding:16px;';
     empty.textContent = '갤러리에 저장된 이미지가 없습니다.';
     grid.appendChild(empty);
+    return;
   }
 
   for(const it of items){
     const wrap=document.createElement('div'); wrap.className='g-item';
-
     const img=document.createElement('img');
+
     if (it.type === 'blob' && it.image instanceof Blob){
-      const url = blobToObjectURL(it.image);
+      const url = URL.createObjectURL(it.image);
       img.src = url;
       img.onload = img.onerror = ()=> URL.revokeObjectURL(url);
     }else{
       img.src = it.image; // dataURL
     }
     img.alt='saved fourcut'; img.title=new Date(it.createdAt).toLocaleString();
-    img.style.cursor='zoom-in'; img.onclick=()=> window.open(img.src,'_blank');
+    img.style.cursor='zoom-in';
+    img.onclick=()=> window.open(img.src,'_blank');
 
     const del=document.createElement('button'); del.className='del'; del.innerHTML='×';
-    del.onclick=async()=>{ if(!confirm('이 이미지를 삭제할까요?')) return; await dbDelImage(`${PHOTO_PREFIX}${it.id}`); await renderGallery(); };
+    del.onclick=async()=>{ if(!confirm('이 이미지를 삭제할까요?')) return; await dbDelImage(`photo:${it.id}`); await renderGallery(); };
 
     wrap.appendChild(img); wrap.appendChild(del); grid.appendChild(wrap);
   }
 }
 
+
 /* ===== init ===== */
 updateCounter();
 }); // DOMContentLoaded
+
