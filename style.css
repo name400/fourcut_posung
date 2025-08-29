@@ -174,3 +174,32 @@ button:disabled{opacity:.5;cursor:not-allowed}
     max-width: 420px !important;
   }
 }
+/* 모바일 (스마트폰) */
+@media (max-width: 767px) {
+  .container{ grid-template-columns:1fr !important; max-width:100% !important; }
+  .fourcut{
+    width: min(92vw, calc(100svh * 0.66));
+    max-width: 380px;
+  }
+  .thumbs .thumb-grid{ grid-template-columns:repeat(2,1fr); }
+}
+
+/* 태블릿 (아이패드, 갤럭시탭) */
+@media (min-width: 768px) and (max-width: 1279px) {
+  .container{ grid-template-columns:1fr !important; max-width:100% !important; }
+  .fourcut{
+    width: min(85vw, calc(100svh * 0.66));
+    max-width: 480px;
+  }
+  .thumbs .thumb-grid{ grid-template-columns:repeat(3,1fr); }
+}
+
+/* 데스크톱 */
+@media (min-width: 1280px) {
+  .container{ grid-template-columns:1fr 1fr; max-width:1200px; }
+  .fourcut{
+    width: clamp(280px, 420px, 560px);
+  }
+}
+
+
