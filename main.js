@@ -28,7 +28,7 @@ const backdrop = $('#backdrop');
 const frameColor = $('#frameColor');
 const frameColorHex = $('#frameColorHex');
 
-/* ===== storage (idb → fallback) ===== */
+/* ===== storage (idb → localStorage fallback) ===== */
 const idb = (window.idbKeyval && typeof window.idbKeyval.set === 'function') ? {
   set: window.idbKeyval.set,
   get: window.idbKeyval.get,
@@ -48,8 +48,9 @@ let shots = [];
 let selected = new Set();
 let finalDataUrl = null;
 let lastQRLink = null;
-let facing = 'user';
+let facing = 'user';            // 전면 기본
 let shotLock = false;
+let renderLock = false;
 
 /* 자동 촬영 */
 let autoTimer = null;
@@ -100,7 +101,7 @@ function ensureFlash(){
 function triggerFlash(){
   const el = ensureFlash();
   el.classList.add('active');
-  setTimeout(()=> el.classList.remove('active'), 300);
+  setTimeout(()=> el.classList.remove('active'), 280);
 }
 function ensureBigCountdown(){
   if(bigCountdownEl) return bigCountdownEl;
@@ -121,6 +122,10 @@ async function startCamera(){
     const constraints = { video: { facingMode:{ideal:facing}, width:{ideal:1280}, height:{ideal:720} }, audio:false };
     stream = await navigator.mediaDevices.getUserMedia(constraints);
     video.srcObject = stream;
+
+    // 전면일 때 미리보기 거울모드
+    video.classList.toggle('mirror', facing === 'user');
+
     await new Promise(res=>{
       if (video.readyState >= 1 && video.videoWidth) return res();
       video.onloadedmetadata = ()=> res();
@@ -129,22 +134,28 @@ async function startCamera(){
     resetAndStartAutoTimer();
   }catch(e){
     console.error('getUserMedia error', e);
-    alert('카메라 접근 실패');
+    let msg='카메라 접근 실패';
+    if (e.name==='NotAllowedError'||e.name==='SecurityError') msg='카메라 권한이 차단되어 있습니다. 브라우저/OS 권한을 허용해 주세요.';
+    else if (!window.isSecureContext) msg='HTTPS(또는 localhost)에서만 카메라 사용이 가능합니다.';
+    else msg += `: ${e.name} ${e.message||''}`;
+    alert(msg);
   }
 }
 function stopCamera(){ try{ stream?.getTracks()?.forEach(t=>t.stop()); }catch{} stream=null; stopAutoTimer(); }
 
-btnStart.onclick = startCamera;
-btnFlip.onclick = async ()=>{ facing = (facing==='user')?'environment':'user'; await startCamera(); };
-btnReset.onclick = ()=>{
+$('#btnStart')?.addEventListener('click', startCamera);
+$('#btnFlip')?.addEventListener('click', async ()=>{
+  facing = (facing==='user')?'environment':'user';
+  await startCamera();
+});
+$('#btnReset')?.addEventListener('click', ()=>{
   shots=[]; selected=new Set(); finalDataUrl=null; lastQRLink=null;
   btnMake.disabled = btnSave.disabled = btnQR.disabled = true;
   renderThumbs(); renderPreview(); updateCounter();
   stopAutoTimer();
-};
-captionInput.addEventListener('input', ()=> renderPreview());
-
-btnShot.onclick = ()=>{ stopAutoTimer(); doCapture('manual'); };
+});
+captionInput?.addEventListener('input', ()=> renderPreview());
+btnShot?.addEventListener('click', ()=>{ stopAutoTimer(); doCapture('manual'); });
 
 /* ===== Auto timer ===== */
 function startAutoTimerTick(){
@@ -165,23 +176,16 @@ function startAutoTimerTick(){
     }
   }, 1000);
 }
-function resetAndStartAutoTimer(){
-  stopAutoTimer();
-  startAutoTimerTick();
-}
-function stopAutoTimer(){
-  if (autoTimer){ clearInterval(autoTimer); autoTimer = null; }
-  clearCountdown();
-  showBigCountdown('');
-}
+function resetAndStartAutoTimer(){ stopAutoTimer(); startAutoTimerTick(); }
+function stopAutoTimer(){ if (autoTimer){ clearInterval(autoTimer); autoTimer = null; } clearCountdown(); showBigCountdown(''); }
 function showCountdown(t){ shotCounter.textContent = `${shots.length} / 6  (${t})`; }
 function clearCountdown(){ shotCounter.textContent = `${shots.length} / 6`; }
 
 /* ===== Capture ===== */
-function doCapture(source='manual'){
+function doCapture(){
   if(shotLock) return;
   if(!stream || shots.length>=6) return;
-  if(!video.videoWidth || !video.videoHeight) return;
+  if(!video.videoWidth || !video.videoHeight){ alert('카메라 초기화 중입니다.'); return; }
 
   shotLock = true;
   try{
@@ -189,13 +193,9 @@ function doCapture(source='manual'){
     hiddenCanvas.width = w; hiddenCanvas.height = h;
     const ctx = hiddenCanvas.getContext('2d');
 
-    // 전면 카메라 좌우 반전
+    // 전면은 캔버스도 거울방향 유지
     if (facing === 'user'){
-      ctx.save();
-      ctx.translate(w, 0);
-      ctx.scale(-1, 1);
-      ctx.drawImage(video, 0, 0, w, h);
-      ctx.restore();
+      ctx.save(); ctx.translate(w, 0); ctx.scale(-1, 1); ctx.drawImage(video, 0, 0, w, h); ctx.restore();
     }else{
       ctx.drawImage(video, 0, 0, w, h);
     }
@@ -203,15 +203,10 @@ function doCapture(source='manual'){
     shots.push(hiddenCanvas.toDataURL('image/jpeg',0.9));
     updateCounter(); renderThumbs();
 
-    // 플래시
     triggerFlash();
 
-    if(shots.length===6){
-      btnShot.disabled = true;
-      stopAutoTimer();
-    }else{
-      resetAndStartAutoTimer();
-    }
+    if(shots.length===6){ btnShot.disabled = true; stopAutoTimer(); }
+    else{ resetAndStartAutoTimer(); }
   } finally {
     setTimeout(()=> shotLock=false, 120);
   }
@@ -228,7 +223,7 @@ function setPolaroidColor(hex){
   const h = sanitizeHex(hex);
   document.documentElement.style.setProperty('--polaroid-bg', h);
 
-  // 대비 보정(바탕이 어두우면 busy 반전)
+  // 배경 대비로 busy 색 자동 보정
   const r = parseInt(h.substr(1,2),16), g = parseInt(h.substr(3,2),16), b = parseInt(h.substr(5,2),16);
   const luminance = (0.2126*r + 0.7152*g + 0.0722*b)/255;
   if(luminance < 0.5){
@@ -239,75 +234,74 @@ function setPolaroidColor(hex){
     document.documentElement.style.setProperty('--busy-fg', '#111111');
   }
 
-  frameColor.value = h;
-  frameColorHex.value = h;
+  frameColor.value = h; frameColorHex.value = h;
 }
 frameColor.addEventListener('input', e=> setPolaroidColor(e.target.value));
 frameColorHex.addEventListener('input', e=> setPolaroidColor(e.target.value));
 setPolaroidColor(frameColor.value);
 
-/* ===== Robust render (오프스크린 캡처) ===== */
-async function renderFourcutStable(){
-  // 1) 캡처 전용 복제본 생성 (오프스크린)
-  const clone = fourcut.cloneNode(true);
-  const srcRectW = Math.max(1, fourcut.offsetWidth);
-  const srcRectH = Math.max(1, fourcut.offsetHeight);
+/* ===== 이미지 로드 보조 ===== */
+function waitImage(img){
+  return new Promise((resolve,reject)=>{
+    if(img.complete && img.naturalWidth>0) return resolve();
+    img.onload = resolve; img.onerror = ()=>reject(new Error('이미지 로드 실패'));
+  });
+}
 
+/* ===== 오프스크린 고정 px 캡처 (잘림 방지) ===== */
+async function renderFourcutStable(){
+  // 폰트 대기(최대 3초)
+  if (document.fonts && document.fonts.ready) {
+    try {
+      await Promise.race([
+        document.fonts.ready,
+        new Promise((_,rej)=>setTimeout(()=>rej(new Error('fonts-timeout')), 3000))
+      ]);
+    } catch(_) {}
+  }
+
+  const srcW = Math.max(1, fourcut.offsetWidth);
+  const srcH = Math.max(1, fourcut.offsetHeight);
+
+  // 1) 캡처 전용 복제
+  const clone = fourcut.cloneNode(true);
   Object.assign(clone.style, {
     position: 'fixed',
     left: '-10000px',
     top: '0',
-    width: srcRectW + 'px',
-    height: srcRectH + 'px',
+    width: srcW + 'px',
+    height: srcH + 'px',
     transform: 'none',
     contain: 'layout paint size',
     boxShadow: 'none',
     filter: 'none',
     overflow: 'hidden',
-    borderRadius: getComputedStyle(fourcut).borderRadius || '20px',
-    background: getComputedStyle(fourcut).backgroundColor || '#fff',
     zIndex: '-1',
   });
-
-  // busy/overlay 제거
+  // busy 제거
   clone.querySelectorAll('.busy').forEach(el => el.remove());
-
   document.body.appendChild(clone);
 
-  // 내부 이미지 로드 보장
+  // 내부 이미지 로드
   const imgs = Array.from(clone.querySelectorAll('img'));
-  const waitImage = (img)=> new Promise((resolve,reject)=>{
-    if(img.complete && img.naturalWidth>0) return resolve();
-    img.onload = resolve; img.onerror = ()=>reject(new Error('이미지 로드 실패'));
-  });
   await Promise.all(imgs.map(img => (img.decode ? img.decode().catch(()=>waitImage(img)) : waitImage(img))));
 
-  // 2) html-to-image 실행 (뷰포트 영향 최소화)
-  const pixelRatio = Math.min(2, window.devicePixelRatio || 1); // 과도한 배율 방지
-  const options = {
-    quality: 0.9,
-    width: srcRectW,
-    height: srcRectH,
-    canvasWidth: srcRectW,
-    canvasHeight: srcRectH,
-    pixelRatio,
+  // 2) 캡처 (배율 1 고정)
+  const dataUrl = await htmlToImage.toJpeg(clone, {
+    quality: 0.92,
+    width: srcW,
+    height: srcH,
+    canvasWidth: srcW,
+    canvasHeight: srcH,
+    pixelRatio: 1,
     cacheBust: true,
     backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--polaroid-bg') || '#fff',
-    filter: (node) => {
-      // 고정 오버레이 제외
-      if (node?.classList?.contains?.('busy')) return false;
-      if (node?.id === 'busy') return false;
-      return true;
-    },
-  };
+    filter: (node)=> !(node?.classList?.contains?.('busy') || node?.id === 'busy'),
+  });
 
-  try{
-    const dataUrl = await htmlToImage.toJpeg(clone, options);
-    return dataUrl;
-  }finally{
-    // 3) 정리
-    document.body.removeChild(clone);
-  }
+  // 3) 정리
+  document.body.removeChild(clone);
+  return dataUrl;
 }
 
 /* ===== Make final image ===== */
@@ -315,6 +309,7 @@ const RENDER_TIMEOUT_MS = 15000;
 btnMake.onclick = async ()=>{
   if(selected.size!==4) return alert('4장을 선택하세요');
   if(!window.htmlToImage) return alert('이미지 모듈 로드 실패. 새로고침 해주세요.');
+  if(renderLock) return; renderLock = true;
 
   setStep(4);
   busyEl.hidden = false;
@@ -332,11 +327,11 @@ btnMake.onclick = async ()=>{
     await idbSet(`photo:${id}`, { id, createdAt: Date.now(), image: finalDataUrl });
   }catch(e){
     console.error(e);
-    const map = { 'render-timeout':'렌더 지연(메모리/네트워크)', };
-    alert('이미지 생성 실패: ' + (map[e?.message] || e?.message || '알 수 없는 오류'));
+    alert('이미지 생성 실패: ' + (e?.message || e));
   }finally{
     busyEl.hidden = true;
-    setTimeout(()=> busyEl.hidden = true, 120); // 잔상 방지
+    setTimeout(()=> busyEl.hidden = true, 120);
+    renderLock = false;
   }
 };
 
@@ -363,8 +358,7 @@ btnQR.onclick = async ()=>{
     await QRCode.toCanvas(qrCanvas, link, { width:260, errorCorrectionLevel:'M' });
     qrLinkText.textContent = link;
   }catch(e){
-    console.error(e);
-    alert('QR 생성 중 오류');
+    console.error(e); alert('QR 생성 중 오류');
     qrModal.hidden=false;
   }
 };
