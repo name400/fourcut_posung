@@ -28,7 +28,7 @@ const backdrop = $('#backdrop');
 const frameColor = $('#frameColor');
 const frameColorHex = $('#frameColorHex');
 
-/* ===== storage (idb → fallback) ===== */
+/* ===== storage (IndexedDB → fallback localStorage) ===== */
 const idb = (window.idbKeyval && typeof window.idbKeyval.set === 'function') ? {
   set: window.idbKeyval.set,
   get: window.idbKeyval.get,
@@ -84,7 +84,11 @@ async function startCamera(){
   try{
     if (stream) stopCamera();
     const constraints = { video: { facingMode:{ideal:facing}, width:{ideal:1280}, height:{ideal:720} }, audio:false };
-    stream = await navigator.mediaDevices.getUserMedia(constraints);
+    try {
+      stream = await navigator.mediaDevices.getUserMedia(constraints);
+    } catch {
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    }
     video.srcObject = stream;
     await new Promise(res=>{
       if (video.readyState >= 1 && video.videoWidth) return res();
@@ -94,8 +98,8 @@ async function startCamera(){
   }catch(e){
     console.error('getUserMedia error', e);
     let msg='카메라 접근 실패';
-    if (e.name==='NotAllowedError'||e.name==='SecurityError') msg='카메라 권한이 차단되어 있습니다. 브라우저/OS 권한을 허용해 주세요.';
-    else if (!window.isSecureContext) msg='HTTPS(또는 localhost)에서만 카메라 사용이 가능합니다.';
+    if (e.name==='NotAllowedError'||e.name==='SecurityError') msg='카메라 권한이 차단되었습니다. 설정 > 브라우저 권한에서 허용하세요.';
+    else if (!window.isSecureContext) msg='카메라는 HTTPS(또는 localhost)에서만 사용 가능합니다.';
     else msg += `: ${e.name} ${e.message||''}`;
     alert(msg);
   }
@@ -113,9 +117,15 @@ btnReset.onclick = ()=>{
 captionInput.addEventListener('input', ()=> renderPreview());
 
 /* Capture */
+let shotLock=false;
 btnShot.onclick = ()=>{
+  if(shotLock) return;
   if(!stream || shots.length>=6) return;
-  if(!video.videoWidth || !video.videoHeight){ alert('카메라 초기화 중입니다. 잠시만…'); return; }
+  if(!video.videoWidth || !video.videoHeight){
+    shotLock=true; setTimeout(()=> shotLock=false,600);
+    alert('카메라 초기화 중입니다. 잠시만…');
+    return;
+  }
   hiddenCanvas.width = video.videoWidth; hiddenCanvas.height = video.videoHeight;
   hiddenCanvas.getContext('2d').drawImage(video,0,0,hiddenCanvas.width,hiddenCanvas.height);
   shots.push(hiddenCanvas.toDataURL('image/jpeg',0.9));
@@ -125,7 +135,7 @@ btnShot.onclick = ()=>{
 
 /* ===== Polaroid color (frame) ===== */
 function sanitizeHex(v){
-  let s = v.trim();
+  let s = (v||'').trim();
   if(!s.startsWith('#')) s = '#'+s;
   if(s.length===4) s = '#'+s[1]+s[1]+s[2]+s[2]+s[3]+s[3];
   return /^#([0-9a-f]{6})$/i.test(s) ? s.toLowerCase() : '#ffffff';
@@ -133,8 +143,6 @@ function sanitizeHex(v){
 function setPolaroidColor(hex){
   const h = sanitizeHex(hex);
   document.documentElement.style.setProperty('--polaroid-bg', h);
-
-  // 밝기 기반 Busy 대비 조정
   const r = parseInt(h.substr(1,2),16), g = parseInt(h.substr(3,2),16), b = parseInt(h.substr(5,2),16);
   const luminance = (0.2126*r + 0.7152*g + 0.0722*b)/255;
   if(luminance < 0.5){
@@ -144,24 +152,14 @@ function setPolaroidColor(hex){
     document.documentElement.style.setProperty('--busy-bg', '#ffffffcc');
     document.documentElement.style.setProperty('--busy-fg', '#111111');
   }
-
   frameColor.value = h;
   frameColorHex.value = h;
 }
 frameColor.addEventListener('input', e=> setPolaroidColor(e.target.value));
 frameColorHex.addEventListener('input', e=> setPolaroidColor(e.target.value));
-setPolaroidColor(frameColor.value); // 초기 반영
+setPolaroidColor(frameColor.value);
 
-/* 이미지 로드 보조 */
-function waitImage(img){
-  return new Promise((resolve,reject)=>{
-    if(img.complete && img.naturalWidth>0) return resolve();
-    img.onload = ()=>resolve();
-    img.onerror = ()=>reject(new Error('이미지 로드 실패'));
-  });
-}
-
-/* Make final image (오버레이 타임아웃 포함) */
+/* ===== Make final image ===== */
 const RENDER_TIMEOUT_MS = 12000;
 btnMake.onclick = async ()=>{
   if(selected.size!==4) return alert('4장을 선택하세요');
@@ -171,20 +169,16 @@ btnMake.onclick = async ()=>{
   busyEl.hidden = false;
 
   try{
-    // 폰트 대기(최대 3초)
     if(document.fonts && document.fonts.ready){
       try{ await Promise.race([document.fonts.ready, new Promise((_,rej)=>setTimeout(()=>rej(new Error('fonts-timeout')),3000))]); }catch{}
     }
-    // 내부 이미지(로고+4컷 사진) 로드 보장
     const imgs = Array.from(fourcut.querySelectorAll('img'));
-    await Promise.all(imgs.map(img => (img.decode ? img.decode().catch(()=>waitImage(img)) : waitImage(img))));
+    await Promise.all(imgs.map(img => (img.decode ? img.decode().catch(()=>img) : img)));
 
     const rect = fourcut.getBoundingClientRect();
     const width = Math.round(rect.width), height = Math.round(rect.height);
-    const options = {
-      quality:0.85, width, height, canvasWidth:width, canvasHeight:height, pixelRatio:1, cacheBust:true,
-      filter:(node)=>!(node.id==='busy' || node.classList?.contains('busy'))
-    };
+    const options = { quality:0.85, width, height, canvasWidth:width, canvasHeight:height, pixelRatio:1, cacheBust:true,
+      filter:(node)=>!(node.id==='busy' || node.classList?.contains('busy')) };
 
     const dataUrl = await Promise.race([
       htmlToImage.toJpeg(fourcut, options),
@@ -198,19 +192,16 @@ btnMake.onclick = async ()=>{
     await idbSet(`photo:${id}`, { id, createdAt: Date.now(), image: finalDataUrl });
   }catch(e){
     console.error(e);
-    const map = { 'fonts-timeout':'폰트 로딩 지연', 'render-timeout':'렌더 지연(네트워크/메모리 문제)' };
+    const map = { 'fonts-timeout':'폰트 로딩 지연', 'render-timeout':'렌더 지연' };
     alert('이미지 생성 실패: ' + (map[e?.message] || e?.message || '알 수 없는 오류'));
   }finally{
     busyEl.hidden = true;
-    setTimeout(()=> busyEl.hidden = true, 50);
+    requestAnimationFrame(()=> busyEl.hidden = true);
   }
 };
 
 /* Save */
-btnSave.onclick = ()=>{
-  if(!finalDataUrl) return;
-  const a=document.createElement('a'); a.href=finalDataUrl; a.download='fourcut.jpg'; a.click();
-};
+btnSave.onclick = ()=>{ if(finalDataUrl){ const a=document.createElement('a'); a.href=finalDataUrl; a.download='fourcut.jpg'; a.click(); } };
 
 /* QR */
 const qrModal = $('#qrModal');
@@ -221,22 +212,27 @@ const btnCloseQR = $('#btnCloseQR');
 const btnCopyLink = $('#btnCopyLink');
 const qrLinkText = $('#qrLinkText');
 
+async function makeQrFriendly(dataUrl){
+  const img=new Image(); img.src=dataUrl; await img.decode();
+  const maxW=720; const scale=Math.min(1,maxW/img.width);
+  const w=Math.round(img.width*scale), h=Math.round(img.height*scale);
+  const c=document.createElement('canvas'); c.width=w; c.height=h;
+  c.getContext('2d').drawImage(img,0,0,w,h);
+  return c.toDataURL('image/jpeg',0.65);
+}
+
 btnQR.onclick = async ()=>{
   if(!finalDataUrl) return;
   try{
-    const link = new URL('viewer.html', location.href).toString() + '#img=' + LZString.compressToEncodedURIComponent(finalDataUrl);
-    lastQRLink = link; qrModal.hidden=false;
+    const small=await makeQrFriendly(finalDataUrl);
+    const link = new URL('viewer.html', location.href).toString() + '#img=' + LZString.compressToEncodedURIComponent(small);
+    lastQRLink=link; qrModal.hidden=false;
     await QRCode.toCanvas(qrCanvas, link, { width:260, errorCorrectionLevel:'M' });
-    qrLinkText.textContent = link;
-  }catch(e){
-    console.error(e); alert('QR 생성 중 오류: ' + (e?.message||e));
-    qrModal.hidden=false;
-  }
+    qrLinkText.textContent=link;
+  }catch(e){ console.error(e); alert('QR 생성 오류: '+(e?.message||e)); qrModal.hidden=false; }
 };
 btnOpenViewer.onclick = ()=>{ if(lastQRLink) window.open(lastQRLink,'_blank'); };
-btnSaveQR.onclick = ()=>{
-  const a=document.createElement('a'); a.href=qrCanvas.toDataURL('image/png'); a.download='fourcut_qr.png'; a.click();
-};
+btnSaveQR.onclick = ()=>{ const a=document.createElement('a'); a.href=qrCanvas.toDataURL('image/png'); a.download='fourcut_qr.png'; a.click(); };
 btnCopyLink.onclick = async ()=>{ try{ await navigator.clipboard.writeText(lastQRLink||''); btnCopyLink.textContent='복사됨!'; setTimeout(()=>btnCopyLink.textContent='링크 복사',1200);}catch{} };
 btnCloseQR.onclick = ()=>{ qrModal.hidden=true; };
 
@@ -248,23 +244,15 @@ backdrop.onclick = closeGallerySmooth;
 document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !gallery.hidden) closeGallerySmooth(); });
 
 /* 전체 삭제 */
-btnWipeGallery.onclick = async ()=>{
-  if(!confirm('갤러리를 모두 삭제할까요?')) return;
-  const keys = await idbKeys();
-  for(const k of keys) if(String(k).startsWith('photo:')) await idbDel(k);
-  await renderGallery();
-  alert('삭제 완료');
-};
+btnWipeGallery.onclick = async ()=>{ if(!confirm('갤러리를 모두 삭제할까요?')) return; const keys=await idbKeys(); for(const k of keys){ if(String(k).startsWith('photo:')) await idbDel(k);} await renderGallery(); alert('삭제 완료'); };
 
 /* render gallery */
 async function renderGallery(){
-  const grid = $('#galleryGrid'); grid.innerHTML='';
-  const keys = await idbKeys();
-  const items = [];
+  const grid=$('#galleryGrid'); grid.innerHTML='';
+  const keys=await idbKeys(); const items=[];
   for(const k of keys){ if(String(k).startsWith('photo:')) items.push(await idbGet(k)); }
   items.sort((a,b)=>b.createdAt-a.createdAt);
-  for(const it of items){
-    if(!it) continue;
+  for(const it of items){ if(!it) continue;
     const wrap=document.createElement('div'); wrap.className='g-item';
     const img=document.createElement('img'); img.src=it.image; img.title=new Date(it.createdAt).toLocaleString();
     const del=document.createElement('button'); del.className='del'; del.innerHTML='×';
@@ -274,4 +262,5 @@ async function renderGallery(){
 }
 
 /* init */
-updateCounter();
+btnMake.disabled=btnSave.disabled=btnQR.disabled=true;
+updateCounter(); renderThumbs(); renderPreview();
