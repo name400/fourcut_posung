@@ -7,6 +7,7 @@ let shots=[];
 let selected=new Set();
 let finalDataUrl=null;
 let autoTimer=null;
+let autoRunning=false;   // 자동 촬영 중인지 여부
 let currentFacing = "user"; // 기본 전면 카메라
 
 // 카메라 시작
@@ -20,7 +21,7 @@ async function startCamera(){
     video.srcObject=stream;
     video.onloadedmetadata=()=> video.play();
 
-    // 전면 카메라는 거울모드, 후면은 정상
+    // 전면 카메라는 거울모드
     if(currentFacing==="user") video.classList.add("mirror");
     else video.classList.remove("mirror");
 
@@ -48,9 +49,12 @@ async function startAutoCapture(){
   renderThumbs(); renderPreview(); updateCounter();
 
   let count=0;
+  autoRunning=true;
+
   function oneCycle(sec=6){
     let remain=sec;
     showCountdown(remain);
+
     autoTimer=setInterval(()=>{
       remain--;
       showCountdown(remain>0 ? remain : "");
@@ -59,10 +63,20 @@ async function startAutoCapture(){
         triggerFlash();
         doCapture();
         count++;
-        if(count<6){ setTimeout(()=>oneCycle(sec),1000); }
+
+        // 6컷 다 채우면 종료
+        if(count>=6 || shots.length>=6){
+          autoRunning=false;
+          showCountdown("");
+          return;
+        }
+
+        // 다음 사이클 시작
+        if(autoRunning){ setTimeout(()=>oneCycle(sec),1000); }
       }
     },1000);
   }
+
   oneCycle();
 }
 
@@ -73,14 +87,17 @@ function doCapture(){
   canvas.width=video.videoWidth; canvas.height=video.videoHeight;
   const ctx=canvas.getContext("2d");
 
-  if(currentFacing==="user"){ // 전면 카메라일 때 좌우반전해서 캡쳐
+  if(currentFacing==="user"){ // 전면 카메라는 좌우반전 캡쳐
     ctx.translate(canvas.width,0);
     ctx.scale(-1,1);
   }
   ctx.drawImage(video,0,0,canvas.width,canvas.height);
 
   const dataUrl=canvas.toDataURL("image/jpeg",0.9);
-  if(shots.length<6){ shots.push(dataUrl); renderThumbs(); updateCounter(); }
+  if(shots.length<6){ 
+    shots.push(dataUrl); 
+    renderThumbs(); updateCounter(); 
+  }
 }
 
 // 썸네일
@@ -138,7 +155,9 @@ $("#btnDownload").onclick=()=>{
   const a=document.createElement("a");
   a.href=finalDataUrl;
   a.download="fourcut.jpg";
+  document.body.appendChild(a);
   a.click();
+  document.body.removeChild(a);
 };
 
 // 갤러리
@@ -165,10 +184,16 @@ $("#frameColor").oninput=()=>{ $(".fourcut").style.backgroundColor=$("#frameColo
 
 // 버튼 이벤트
 $("#btnStart").onclick=async()=>{ await startCamera(); startAutoCapture(); };
+
+// 수동 촬영 (자동촬영 중지 + 카운트다운 초기화)
 $("#btnShot").onclick=()=>{ 
-  if(autoTimer){ clearInterval(autoTimer); autoTimer=null; showCountdown(""); }
-  triggerFlash(); doCapture(); 
+  if(autoTimer){ clearInterval(autoTimer); autoTimer=null; }
+  autoRunning=false;
+  showCountdown("");
+  triggerFlash();
+  doCapture(); 
 };
+
 $("#caption").oninput=()=>renderPreview();
 $("#btnMake").onclick=()=>makeFourcut();
 $("#btnSave").onclick=()=>saveImage();
