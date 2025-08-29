@@ -7,8 +7,9 @@ let shots=[];
 let selected=new Set();
 let finalDataUrl=null;
 let autoTimer=null;
-let autoRunning=false;   // 자동 촬영 중 여부
+let autoRunning=false;     // 자동 촬영 중 여부
 let currentFacing = "user"; // 기본 전면 카메라
+let remain = 6;             // 카운트다운 남은 초 (전역)
 
 // 카메라 시작
 async function startCamera(){
@@ -49,7 +50,7 @@ async function startAutoCapture(){
   renderThumbs(); renderPreview(); updateCounter();
 
   autoRunning=true;
-  let remain=6;
+  remain=6;
 
   if(autoTimer){ clearInterval(autoTimer); }
   showCountdown(remain);
@@ -183,14 +184,14 @@ $("#frameColor").oninput=()=>{ $(".fourcut").style.backgroundColor=$("#frameColo
 // 버튼 이벤트
 $("#btnStart").onclick=async()=>{ await startCamera(); startAutoCapture(); };
 
-// 수동 촬영 (카운트다운 리셋만)
+// 수동 촬영 (자동촬영 루프는 유지, 카운트다운 리셋)
 $("#btnShot").onclick=()=>{ 
   triggerFlash();
   doCapture();
 
-  // 카운트다운 리셋 (자동촬영 루프 유지)
   if(autoRunning){
-    showCountdown(6);
+    remain = 6;            // 루프가 공유하는 remain을 리셋
+    showCountdown(remain); // 화면 즉시 갱신
   }
 };
 
