@@ -1,427 +1,345 @@
-/* ===== helpers ===== */
-const $ = (q) => document.querySelector(q);
-const $$ = (q) => document.querySelectorAll(q);
+// ---------- utilities ----------
+const $ = (q, root=document) => root.querySelector(q);
+const $$ = (q, root=document) => root.querySelectorAll(q);
+const on = (el, ev, fn) => el && el.addEventListener(ev, fn);
+const setHidden = (el, v) => { if (el) el.hidden = !!v; };
 
-/* ===== elements ===== */
-const video = $('#video');
-const btnStart = $('#btnStart');
-const btnShot = $('#btnShot');
-const btnFlip = $('#btnFlip');
-const btnReset = $('#btnReset');
-const shotCounter = $('#shotCounter');
-const thumbGrid = $('#thumbGrid');
-const btnMake = $('#btnMake');
-const btnSave = $('#btnSave');
-const btnQR = $('#btnQR');
-const fourcut = $('#fourcut');          // 레이아웃 프리뷰
-const finalGrid = $('#finalGrid');
-const captionInput = $('#caption');
-const polaroidCap = $('#polaroidCap');
-const hiddenCanvas = $('#hiddenCanvas');
-const btnGallery = $('#btnGallery');
-const gallery = $('#gallery');
-const btnCloseGallery = $('#btnCloseGallery');
-const btnWipeGallery = $('#btnWipeGallery');
-const backdrop = $('#backdrop');
-// 로딩 오버레이는 사용 안함(혹시 남아있어도 비활성화)
-const busyEl = $('#busy'); if (busyEl) busyEl.hidden = true;
+document.addEventListener('DOMContentLoaded', () => {
+  // ---------- elements ----------
+  const video = $('#video');
+  const btnStart = $('#btnStart');
+  const btnShot = $('#btnShot');
+  const btnFlip = $('#btnFlip');
+  const btnReset = $('#btnReset');
+  const shotCounter = $('#shotCounter');
+  const thumbGrid = $('#thumbGrid');
+  const btnMake = $('#btnMake');
+  const btnSave = $('#btnSave');
+  const btnQR = $('#btnQR');
+  const fourcut = $('#fourcut');
+  const finalGrid = $('#finalGrid');
+  const captionInput = $('#caption');
+  const polaroidCap = $('#polaroidCap');
+  const hiddenCanvas = $('#hiddenCanvas');
+  const btnGallery = $('#btnGallery');
+  const gallery = $('#gallery');
+  const btnCloseGallery = $('#btnCloseGallery');
+  const btnWipeGallery = $('#btnWipeGallery');
+  const backdrop = $('#backdrop');
+  const qrModal = $('#qrModal');
+  const qrCanvas = $('#qrCanvas');
+  const btnOpenViewer = $('#btnOpenViewer');
+  const btnSaveQR = $('#btnSaveQR');
+  const btnCloseQR = $('#btnCloseQR');
+  const btnCopyLink = $('#btnCopyLink');
+  const qrLinkText = $('#qrLinkText');
+  const frameColor = $('#frameColor');
+  const frameColorHex = $('#frameColorHex');
 
-const frameColor = $('#frameColor');
-const frameColorHex = $('#frameColorHex');
+  // ---------- constants ----------
+  const MIRROR_FRONT = true;
+  const AUTO_LIMIT_SEC = 6;
+  const EXPORT_BASE_W = 1200;  // -> 1200 x 1800 (2:3)
+  const DPR_CAP = 2;
+  const PHOTO_PREFIX = 'photo:';
 
-/* ===== config ===== */
-const MIRROR_FRONT = true;       // 전면 카메라: 미리보기/저장 모두 거울모드
-const AUTO_LIMIT_SEC = 6;        // 자동 촬영 카운트다운
-const EXPORT_BASE_W = 1200;      // 결과 폭(px) → 2:3 비율로 1200x1800
-const DPR_CAP = 2;               // 과도한 해상도 방지
-const PHOTO_PREFIX = 'photo:';   // 갤러리 저장 키 프리픽스
+  // ---------- state ----------
+  let stream = null;
+  let shots = [];
+  let selected = new Set();
+  let finalDataUrl = null;
+  let lastQRLink = null;
+  let facing = 'user';
+  let shotLock = false;
+  let renderLock = false;
+  let autoTimer = null;
+  let autoRemain = 0;
+  let flashEl = null;
+  let bigCountdownEl = null;
 
-/* ===== resilient storage (IDB 우선, 실패 시 로컬스토리지) ===== */
-function lsSet(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){ console.warn('localStorage set fail', e); } }
-function lsGet(k){ try{ const s=localStorage.getItem(k); return s?JSON.parse(s):null; }catch(e){ return null; } }
-function lsDel(k){ try{ localStorage.removeItem(k); }catch(e){} }
-function lsKeys(){ try{ return Object.keys(localStorage); }catch(e){ return []; } }
-
-async function dbSet(k, v){
-  let ok=false;
-  if (window.idbKeyval?.set){
-    try{ await window.idbKeyval.set(k, v); ok=true; }catch(e){ console.warn('IDB set fail -> fallback ls', e); }
+  // ---------- storage (IDB + localStorage) ----------
+  const ls = {
+    set: (k, v)=>{ try{localStorage.setItem(k, JSON.stringify(v));}catch{} },
+    get: (k)=>{ try{const s=localStorage.getItem(k); return s?JSON.parse(s):null;}catch{return null;} },
+    del: (k)=>{ try{localStorage.removeItem(k);}catch{} },
+    keys: ()=>{ try{return Object.keys(localStorage);}catch{return [];} }
+  };
+  const idb = window.idbKeyval || {};
+  async function dbSet(k, v){ let ok=false; if(idb.set){try{await idb.set(k,v); ok=true;}catch{}} if(!ok) ls.set(k,v); }
+  async function dbGet(k){ if(idb.get){try{const v=await idb.get(k); if(v!=null) return v;}catch{}} return ls.get(k); }
+  async function dbDel(k){ if(idb.del){try{await idb.del(k);}catch{}} ls.del(k); }
+  async function dbAllKeys(){
+    let a=[], b=[];
+    if(idb.keys){try{a = await idb.keys();}catch{}}
+    try{ b = ls.keys(); }catch{}
+    const s = new Set([...a.map(String), ...b.map(String)]);
+    return [...s].filter(k => k.startsWith(PHOTO_PREFIX));
   }
-  if (!ok) lsSet(k, v);
-}
-async function dbGet(k){
-  if (window.idbKeyval?.get){
-    try{ const v = await window.idbKeyval.get(k); if (v!=null) return v; }catch(e){ console.warn('IDB get fail -> try ls', e); }
-  }
-  return lsGet(k);
-}
-async function dbDel(k){
-  if (window.idbKeyval?.del){
-    try{ await window.idbKeyval.del(k); }catch(e){ console.warn('IDB del fail -> ls', e); }
-  }
-  lsDel(k);
-}
-async function dbAllKeys(){
-  let a=[], b=[];
-  if (window.idbKeyval?.keys){
-    try{ a = await window.idbKeyval.keys(); }catch(e){ console.warn('IDB keys fail', e); }
-  }
-  b = lsKeys();
-  // 문자열로 통일 + 중복 제거
-  const set = new Set([...a.map(String), ...b.map(String)]);
-  return [...set];
-}
 
-/* ===== state ===== */
-let stream = null;
-let shots = [];
-let selected = new Set();
-let finalDataUrl = null;
-let lastQRLink = null;
-let facing = 'user';    // 'user' | 'environment'
-let shotLock = false;
-let renderLock = false;
-
-/* auto timer */
-let autoTimer = null;
-let autoRemain = 0;
-
-/* flash & big countdown */
-let flashEl = null;
-let bigCountdownEl = null;
-
-/* ===== UI ===== */
-function setStep(n){ [...$$('.step')].forEach((el,i)=> el.classList.toggle('active', i===n-1)); }
-function updateCounter(){ shotCounter.textContent = `${shots.length} / 6`; setStep(shots.length===6?2:1); }
-function renderThumbs(){
-  thumbGrid.innerHTML = '';
-  shots.forEach((src, idx)=>{
-    const d = document.createElement('div');
-    d.className = 'thumb' + (selected.has(idx) ? ' sel' : '');
-    d.onclick = ()=>{
-      if(selected.has(idx)) selected.delete(idx);
-      else if(selected.size < 4) selected.add(idx);
-      renderThumbs(); renderPreview();
-      btnMake.disabled = !(selected.size===4);
-      if(selected.size===4) setStep(3);
-    };
-    const img = document.createElement('img'); img.src = src; d.appendChild(img);
-    thumbGrid.appendChild(d);
-  });
-}
-function renderPreview(){
-  finalGrid.innerHTML = '';
-  [...selected].slice(0,4).forEach(i=>{
-    const cell = document.createElement('div'); cell.className = 'cell';
-    const img = document.createElement('img'); img.src = shots[i];
-    cell.appendChild(img); finalGrid.appendChild(cell);
-  });
-  polaroidCap.textContent = captionInput.value || ' ';
-}
-
-/* ===== flash & big countdown ===== */
-function ensureFlash(){ if(flashEl) return flashEl; flashEl = document.createElement('div'); flashEl.className='flash'; document.body.appendChild(flashEl); return flashEl; }
-function triggerFlash(){ const el=ensureFlash(); el.classList.add('active'); setTimeout(()=>el.classList.remove('active'),280); }
-function ensureBigCountdown(){ if(bigCountdownEl) return bigCountdownEl; bigCountdownEl=document.createElement('div'); bigCountdownEl.className='big-countdown'; document.body.appendChild(bigCountdownEl); return bigCountdownEl; }
-function showBigCountdown(sec){ ensureBigCountdown().textContent = sec>0?sec:''; }
-
-/* ===== camera ===== */
-async function startCamera(){
-  try{
-    if (stream) stopCamera();
-    const constraints = { video: { facingMode:{ideal:facing}, width:{ideal:1280}, height:{ideal:720} }, audio:false };
-    stream = await navigator.mediaDevices.getUserMedia(constraints);
-    video.srcObject = stream;
-
-    // 전면 미리보기: 거울모드
-    const mirrorPreview = MIRROR_FRONT && (facing === 'user');
-    video.classList.toggle('mirror', mirrorPreview);
-
-    await new Promise(res=>{
-      if (video.readyState >= 1 && video.videoWidth) return res();
-      video.onloadedmetadata = res;
+  // ---------- ui helpers ----------
+  function setStep(n){ [...$$('.step')].forEach((el,i)=> el.classList.toggle('active', i===n-1)); }
+  function updateCounter(){ if(shotCounter) shotCounter.textContent = `${shots.length} / 6`; setStep(shots.length===6?2:1); }
+  function renderThumbs(){
+    if(!thumbGrid) return;
+    thumbGrid.innerHTML = '';
+    shots.forEach((src, idx)=>{
+      const d = document.createElement('div');
+      d.className = 'thumb' + (selected.has(idx) ? ' sel' : '');
+      d.onclick = ()=>{
+        if(selected.has(idx)) selected.delete(idx);
+        else if(selected.size < 4) selected.add(idx);
+        renderThumbs(); renderPreview();
+        if(btnMake) btnMake.disabled = !(selected.size===4);
+        if(selected.size===4) setStep(3);
+      };
+      const img = document.createElement('img'); img.src = src; d.appendChild(img);
+      thumbGrid.appendChild(d);
     });
-
-    btnShot.disabled = false;
-    resetAndStartAutoTimer();
-  }catch(e){
-    console.error('getUserMedia error', e);
-    let msg='카메라 접근 실패';
-    if (e.name==='NotAllowedError'||e.name==='SecurityError') msg='카메라 권한이 차단되어 있습니다. 브라우저/OS 권한을 허용해 주세요.';
-    else if (!window.isSecureContext) msg='HTTPS(또는 localhost)에서만 카메라 사용이 가능합니다.';
-    else msg += `: ${e.name} ${e.message||''}`;
-    alert(msg);
   }
-}
-function stopCamera(){ try{ stream?.getTracks()?.forEach(t=>t.stop()); }catch{} stream=null; stopAutoTimer(); }
-
-btnStart?.addEventListener('click', startCamera);
-btnFlip?.addEventListener('click', async ()=>{ facing = (facing==='user')?'environment':'user'; await startCamera(); });
-btnReset?.addEventListener('click', ()=>{
-  shots=[]; selected=new Set(); finalDataUrl=null; lastQRLink=null;
-  btnMake.disabled = btnSave.disabled = btnQR.disabled = true;
-  renderThumbs(); renderPreview(); updateCounter(); stopAutoTimer();
-});
-captionInput?.addEventListener('input', renderPreview);
-btnShot?.addEventListener('click', ()=>{ stopAutoTimer(); doCapture(); });
-
-/* ===== auto timer ===== */
-function startAutoTimerTick(){
-  stopAutoTimer();
-  autoRemain = AUTO_LIMIT_SEC;
-  showCountdown(autoRemain); showBigCountdown(autoRemain);
-  autoTimer = setInterval(()=>{
-    autoRemain -= 1;
-    if (autoRemain>0){ showCountdown(autoRemain); showBigCountdown(autoRemain); }
-    else{ stopAutoTimer(); showCountdown(''); showBigCountdown(''); doCapture(); }
-  },1000);
-}
-function resetAndStartAutoTimer(){ stopAutoTimer(); startAutoTimerTick(); }
-function stopAutoTimer(){ if(autoTimer){ clearInterval(autoTimer); autoTimer=null; } clearCountdown(); showBigCountdown(''); }
-function showCountdown(t){ shotCounter.textContent = `${shots.length} / 6  (${t})`; }
-function clearCountdown(){ shotCounter.textContent = `${shots.length} / 6`; }
-
-/* ===== capture (저장도 거울방향) ===== */
-function doCapture(){
-  if(shotLock) return;
-  if(!stream || shots.length>=6) return;
-  if(!video.videoWidth || !video.videoHeight){ alert('카메라 초기화 중입니다.'); return; }
-
-  shotLock = true;
-  try{
-    const w = video.videoWidth, h = video.videoHeight;
-    hiddenCanvas.width = w; hiddenCanvas.height = h;
-    const ctx = hiddenCanvas.getContext('2d');
-
-    // 전면은 저장도 거울방향 유지
-    const mirrorSave = MIRROR_FRONT && (facing === 'user');
-    if (mirrorSave){ ctx.translate(w, 0); ctx.scale(-1, 1); }
-    ctx.drawImage(video, 0, 0, w, h);
-
-    shots.push(hiddenCanvas.toDataURL('image/jpeg',0.92));
-    updateCounter(); renderThumbs(); triggerFlash();
-
-    if(shots.length===6){ btnShot.disabled=true; stopAutoTimer(); }
-    else{ resetAndStartAutoTimer(); }
-  } finally {
-    setTimeout(()=> shotLock=false, 120);
+  function renderPreview(){
+    if(!finalGrid) return;
+    finalGrid.innerHTML = '';
+    [...selected].slice(0,4).forEach(i=>{
+      const cell = document.createElement('div'); cell.className = 'cell';
+      const img = document.createElement('img'); img.src = shots[i];
+      cell.appendChild(img); finalGrid.appendChild(cell);
+    });
+    if(polaroidCap) polaroidCap.textContent = captionInput?.value || ' ';
   }
-}
 
-/* ===== color ===== */
-function sanitizeHex(v){ let s=v.trim(); if(!s.startsWith('#')) s='#'+s; if(s.length===4) s='#'+s[1]+s[1]+s[2]+s[2]+s[3]+s[3]; return /^#([0-9a-f]{6})$/i.test(s)?s.toLowerCase():'#ffffff'; }
-function setPolaroidColor(hex){
-  const h=sanitizeHex(hex);
-  document.documentElement.style.setProperty('--polaroid-bg', h);
-  const r=parseInt(h.substr(1,2),16), g=parseInt(h.substr(3,2),16), b=parseInt(h.substr(5,2),16);
-  const L=(0.2126*r+0.7152*g+0.0722*b)/255;
-  document.documentElement.style.setProperty('--busy-bg', L<0.5?'#00000099':'#ffffffcc');
-  document.documentElement.style.setProperty('--busy-fg', L<0.5?'#ffffff':'#111111');
-  frameColor.value=h; frameColorHex.value=h;
-}
-frameColor?.addEventListener('input', e=> setPolaroidColor(e.target.value));
-frameColorHex?.addEventListener('input', e=> setPolaroidColor(e.target.value));
-setPolaroidColor(frameColor?.value || '#ffffff');
+  // flash & countdown
+  function ensureFlash(){ if(flashEl) return flashEl; flashEl = document.createElement('div'); flashEl.className='flash'; document.body.appendChild(flashEl); return flashEl; }
+  function triggerFlash(){ const el=ensureFlash(); el.classList.add('active'); setTimeout(()=>el.classList.remove('active'),280); }
+  function ensureBigCountdown(){ if(bigCountdownEl) return bigCountdownEl; bigCountdownEl=document.createElement('div'); bigCountdownEl.className='big-countdown'; document.body.appendChild(bigCountdownEl); return bigCountdownEl; }
+  function showBigCountdown(sec){ ensureBigCountdown().textContent = sec>0?sec:''; }
+  function showCountdown(t){ if(shotCounter) shotCounter.textContent = `${shots.length} / 6  (${t})`; }
+  function clearCountdown(){ if(shotCounter) shotCounter.textContent = `${shots.length} / 6`; }
 
-/* ===== utils (이미지 로드 & 그리기) ===== */
-function loadImage(src){
-  return new Promise((resolve,reject)=>{
-    const img = new Image();
-    img.onload = ()=> resolve(img);
-    img.onerror = ()=> reject(new Error('이미지 로드 실패'));
-    img.src = src;
+  // camera
+  async function startCamera(){
+    try{
+      if (stream) stopCamera();
+      const constraints = { video: { facingMode:{ideal:facing}, width:{ideal:1280}, height:{ideal:720} }, audio:false };
+      stream = await navigator.mediaDevices.getUserMedia(constraints);
+      if (video) {
+        video.srcObject = stream;
+        video.classList.toggle('mirror', MIRROR_FRONT && (facing==='user'));
+      }
+      await new Promise(res=>{
+        if (video && video.readyState >= 1 && video.videoWidth) return res();
+        if (video) video.onloadedmetadata = res; else res();
+      });
+      if(btnShot) btnShot.disabled = false;
+      resetAndStartAutoTimer();
+    }catch(e){
+      console.error('[camera]', e);
+      alert('카메라 접근 실패: 권한/HTTPS를 확인해 주세요.');
+    }
+  }
+  function stopCamera(){ try{ stream?.getTracks()?.forEach(t=>t.stop()); }catch{} stream=null; stopAutoTimer(); }
+
+  on(btnStart,'click', startCamera);
+  on(btnFlip,'click', async ()=>{ facing = (facing==='user')?'environment':'user'; await startCamera(); });
+  on(btnReset,'click', ()=>{
+    shots=[]; selected=new Set(); finalDataUrl=null; lastQRLink=null;
+    if(btnMake) btnMake.disabled = true;
+    if(btnSave) btnSave.disabled = true;
+    if(btnQR) btnQR.disabled = true;
+    renderThumbs(); renderPreview(); updateCounter(); stopAutoTimer();
   });
-}
-function drawCover(ctx, img, dx, dy, dW, dH){
-  const sW = img.naturalWidth || img.width;
-  const sH = img.naturalHeight || img.height;
-  const sRatio = sW / sH;
-  const dRatio = dW / dH;
-  let sx=0, sy=0, sw=sW, sh=sH;
-  if (sRatio > dRatio) { const newW = sh * dRatio; sx = (sw - newW) / 2; sw = newW; }
-  else { const newH = sw / dRatio; sy = (sh - newH) / 2; sh = newH; }
-  ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dW, dH);
-}
-function roundRect(ctx, x, y, w, h, r){
-  const radius = Math.min(r, w/2, h/2);
-  ctx.beginPath();
-  ctx.moveTo(x+radius, y);
-  ctx.arcTo(x+w, y, x+w, y+h, radius);
-  ctx.arcTo(x+w, y+h, x, y+h, radius);
-  ctx.arcTo(x, y+h, x, y, radius);
-  ctx.arcTo(x, y, x+w, y, radius);
-  ctx.closePath();
-}
+  on(captionInput,'input', renderPreview);
+  on(btnShot,'click', ()=>{ stopAutoTimer(); doCapture(); });
 
-/* ===== 캔버스 합성 ===== */
-async function composeFourcutCanvas(){
-  const dpr = Math.min(DPR_CAP, window.devicePixelRatio || 1);
-  const outW = Math.round(EXPORT_BASE_W * dpr);
-  const outH = Math.round(outW * 1.5);         // 2:3
-
-  const canvas = document.createElement('canvas');
-  canvas.width = outW; canvas.height = outH;
-  const ctx = canvas.getContext('2d');
-
-  const bg = getComputedStyle(document.documentElement).getPropertyValue('--polaroid-bg').trim() || '#fff';
-  const pad = Math.round(32 * dpr);
-  const gap = Math.round(20 * dpr);
-  const radius = Math.round(36 * dpr);
-  const headerH = Math.round(96 * dpr);
-  const captionH = Math.round(80 * dpr);
-  const gridPadTop = Math.round(12 * dpr);
-
-  // 배경
-  ctx.fillStyle = bg; roundRect(ctx, 0, 0, outW, outH, radius); ctx.fill();
-
-  // 헤더
-  const logoEl = fourcut.querySelector('.fc-logo');
-  const titleText = (fourcut.querySelector('.fc-title')?.textContent || '').trim();
-  if (logoEl) {
-    try {
-      const logo = await loadImage(logoEl.src);
-      const lSize = Math.round(64 * dpr);
-      ctx.drawImage(logo, pad, pad + Math.round((headerH - lSize)/2), lSize, lSize);
-    } catch {}
+  // auto timer
+  function startAutoTimerTick(){
+    stopAutoTimer();
+    autoRemain = AUTO_LIMIT_SEC;
+    showCountdown(autoRemain); showBigCountdown(autoRemain);
+    autoTimer = setInterval(()=>{
+      autoRemain -= 1;
+      if (autoRemain>0){ showCountdown(autoRemain); showBigCountdown(autoRemain); }
+      else { stopAutoTimer(); showCountdown(''); showBigCountdown(''); doCapture(); }
+    },1000);
   }
-  ctx.fillStyle = '#111';
-  ctx.font = `${Math.round(40*dpr)}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
-  ctx.textBaseline = 'middle';
-  ctx.fillText(titleText || '', pad + Math.round(80*dpr), pad + Math.round(headerH/2));
+  function resetAndStartAutoTimer(){ stopAutoTimer(); startAutoTimerTick(); }
+  function stopAutoTimer(){ if(autoTimer){ clearInterval(autoTimer); autoTimer=null; } clearCountdown(); showBigCountdown(''); }
 
-  // 2x2 그리드
-  const innerX = pad;
-  const innerY = pad + headerH + gridPadTop;
-  const innerW = outW - pad*2;
-  const innerH = outH - pad - captionH - innerY;
+  // capture (mirror-save for front)
+  function doCapture(){
+    if(shotLock) return;
+    if(!stream || shots.length>=6) return;
+    if(!video?.videoWidth || !video?.videoHeight){ alert('카메라 초기화 중입니다.'); return; }
+    shotLock = true;
+    try{
+      const w = video.videoWidth, h = video.videoHeight;
+      if (hiddenCanvas){ hiddenCanvas.width = w; hiddenCanvas.height = h; }
+      const ctx = hiddenCanvas.getContext('2d');
+      const mirrorSave = MIRROR_FRONT && (facing === 'user');
+      if (mirrorSave){ ctx.translate(w, 0); ctx.scale(-1, 1); }
+      ctx.drawImage(video, 0, 0, w, h);
+      shots.push(hiddenCanvas.toDataURL('image/jpeg',0.92));
+      updateCounter(); renderThumbs(); triggerFlash();
+      if(shots.length===6){ if(btnShot) btnShot.disabled=true; stopAutoTimer(); }
+      else{ resetAndStartAutoTimer(); }
+    } finally { setTimeout(()=> shotLock=false, 120); }
+  }
 
-  const cellW = Math.floor((innerW - gap) / 2);
-  const cellH = Math.floor(cellW * 4 / 3);     // 3:4 셀
-  const rowGap = gap;
+  // color
+  function sanitizeHex(v){ let s=v.trim(); if(!s.startsWith('#')) s='#'+s; if(s.length===4) s='#'+s[1]+s[1]+s[2]+s[2]+s[3]+s[3]; return /^#([0-9a-f]{6})$/i.test(s)?s.toLowerCase():'#ffffff'; }
+  function setPolaroidColor(hex){
+    const h=sanitizeHex(hex);
+    document.documentElement.style.setProperty('--polaroid-bg', h);
+    const r=parseInt(h.substr(1,2),16), g=parseInt(h.substr(3,2),16), b=parseInt(h.substr(5,2),16);
+    const L=(0.2126*r+0.7152*g+0.0722*b)/255;
+    document.documentElement.style.setProperty('--busy-bg', L<0.5?'#00000099':'#ffffffcc');
+    document.documentElement.style.setProperty('--busy-fg', L<0.5?'#ffffff':'#111111');
+    if(frameColor) frameColor.value=h;
+    if(frameColorHex) frameColorHex.value=h;
+  }
+  on(frameColor,'input', e=> setPolaroidColor(e.target.value));
+  on(frameColorHex,'input', e=> setPolaroidColor(e.target.value));
+  setPolaroidColor(frameColor?.value || '#ffffff');
 
-  const selIdx = [...selected].slice(0,4);
-  const imgs = await Promise.all(selIdx.map(i => loadImage(shots[i])));
+  // utils for canvas
+  function loadImage(src){ return new Promise((resolve,reject)=>{ const img=new Image(); img.onload=()=>resolve(img); img.onerror=()=>reject(new Error('이미지 로드 실패')); img.src=src; }); }
+  function drawCover(ctx, img, dx, dy, dW, dH){
+    const sW = img.naturalWidth || img.width, sH = img.naturalHeight || img.height;
+    const sRatio = sW / sH, dRatio = dW / dH;
+    let sx=0, sy=0, sw=sW, sh=sH;
+    if (sRatio > dRatio) { const newW = sh * dRatio; sx = (sw - newW) / 2; sw = newW; }
+    else { const newH = sw / dRatio; sy = (sh - newH) / 2; sh = newH; }
+    ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dW, dH);
+  }
+  function roundRect(ctx, x, y, w, h, r){
+    const radius = Math.min(r, w/2, h/2);
+    ctx.beginPath();
+    ctx.moveTo(x+radius, y);
+    ctx.arcTo(x+w, y, x+w, y+h, radius);
+    ctx.arcTo(x+w, y+h, x, y+h, radius);
+    ctx.arcTo(x, y+h, x, y, radius);
+    ctx.arcTo(x, y, x+w, y, radius);
+    ctx.closePath();
+  }
 
-  for (let r=0; r<2; r++){
-    for (let c=0; c<2; c++){
-      const idx = r*2 + c;
-      const x = innerX + c * (cellW + gap);
-      const y = innerY + r * (cellH + rowGap);
+  // compose final image (2:3)
+  async function composeFourcutCanvas(){
+    const dpr = Math.min(DPR_CAP, window.devicePixelRatio || 1);
+    const outW = Math.round(EXPORT_BASE_W * dpr);
+    const outH = Math.round(outW * 1.5);
 
-      ctx.save();
-      ctx.fillStyle = '#dbe1ee';
-      roundRect(ctx, x, y, cellW, cellH, Math.round(24*dpr)); ctx.fill();
-      ctx.clip();
+    const canvas = document.createElement('canvas'); canvas.width = outW; canvas.height = outH;
+    const ctx = canvas.getContext('2d');
 
-      const img = imgs[idx];
-      if (img) drawCover(ctx, img, x, y, cellW, cellH);
-      ctx.restore();
+    const bg = getComputedStyle(document.documentElement).getPropertyValue('--polaroid-bg').trim() || '#fff';
+    const pad = Math.round(32 * dpr), gap = Math.round(20 * dpr), radius = Math.round(36 * dpr);
+    const headerH = Math.round(96 * dpr), captionH = Math.round(80 * dpr), gridPadTop = Math.round(12 * dpr);
+
+    ctx.fillStyle = bg; roundRect(ctx, 0, 0, outW, outH, radius); ctx.fill();
+
+    const logoEl = fourcut?.querySelector('.fc-logo');
+    const titleText = (fourcut?.querySelector('.fc-title')?.textContent || '').trim();
+    if (logoEl) {
+      try { const logo = await loadImage(logoEl.src); const l = Math.round(64*dpr);
+        ctx.drawImage(logo, pad, pad + Math.round((headerH - l)/2), l, l);
+      } catch {}
+    }
+    ctx.fillStyle = '#111'; ctx.font = `${Math.round(40*dpr)}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
+    ctx.textBaseline = 'middle'; ctx.fillText(titleText || '', pad + Math.round(80*dpr), pad + Math.round(headerH/2));
+
+    const innerX = pad, innerY = pad + headerH + gridPadTop;
+    const innerW = outW - pad*2, innerH = outH - pad - captionH - innerY;
+    const cellW = Math.floor((innerW - gap) / 2), cellH = Math.floor(cellW * 4 / 3), rowGap = gap;
+
+    const selIdx = [...selected].slice(0,4);
+    const imgs = await Promise.all(selIdx.map(i => loadImage(shots[i])));
+
+    for (let r=0; r<2; r++){
+      for (let c=0; c<2; c++){
+        const idx = r*2 + c, x = innerX + c*(cellW+gap), y = innerY + r*(cellH+rowGap);
+        ctx.save(); ctx.fillStyle = '#dbe1ee'; roundRect(ctx, x, y, cellW, cellH, Math.round(24*dpr)); ctx.fill(); ctx.clip();
+        const img = imgs[idx]; if (img) drawCover(ctx, img, x, y, cellW, cellH); ctx.restore();
+      }
+    }
+
+    const cap = (captionInput?.value || '').trim();
+    if (cap){
+      ctx.fillStyle = '#111';
+      ctx.font = `700 ${Math.round(34*dpr)}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(cap, outW/2, outH - Math.round(captionH/2));
+    }
+
+    return canvas.toDataURL('image/jpeg', 0.95);
+  }
+
+  // make/save/qr
+  on(btnMake,'click', async ()=>{
+    if(selected.size!==4) return alert('4장을 선택하세요');
+    if(renderLock) return; renderLock = true; setStep(4);
+    try{
+      finalDataUrl = await composeFourcutCanvas();
+      const id = crypto.randomUUID();
+      await dbSet(`${PHOTO_PREFIX}${id}`, { id, createdAt: Date.now(), image: finalDataUrl });
+      if(!btnSave?.disabled){} // noop
+      if(btnSave) btnSave.disabled=false;
+      if(btnQR) btnQR.disabled=false;
+      if (gallery && !gallery.hidden) await renderGallery();
+    }catch(e){
+      console.error('[make]', e); alert('이미지 생성/저장 실패');
+    }finally{ renderLock=false; }
+  });
+
+  on(btnSave,'click', ()=>{
+    if(!finalDataUrl) return;
+    const a=document.createElement('a'); a.href=finalDataUrl; a.download='fourcut.jpg'; a.click();
+  });
+
+  on(btnQR,'click', async ()=>{
+    if(!finalDataUrl) return;
+    try{
+      const link = new URL('viewer.html', location.href).toString() + '#img=' + LZString.compressToEncodedURIComponent(finalDataUrl);
+      lastQRLink = link; setHidden(qrModal, false);
+      await QRCode.toCanvas(qrCanvas, link, { width:260, errorCorrectionLevel:'M' });
+      if(qrLinkText) qrLinkText.textContent = link;
+    }catch(e){ console.error('[qr]', e); alert('QR 생성 실패'); setHidden(qrModal, false); }
+  });
+  on(btnOpenViewer,'click', ()=>{ if(lastQRLink) window.open(lastQRLink,'_blank'); });
+  on(btnSaveQR,'click', ()=>{ if(!qrCanvas) return; const a=document.createElement('a'); a.href=qrCanvas.toDataURL('image/png'); a.download='fourcut_qr.png'; a.click(); });
+  on(btnCopyLink,'click', async ()=>{ try{ await navigator.clipboard.writeText(lastQRLink||''); if(btnCopyLink){ const t=btnCopyLink.textContent; btnCopyLink.textContent='복사됨!'; setTimeout(()=>btnCopyLink.textContent=t,1200);} }catch{} });
+  on(btnCloseQR,'click', ()=> setHidden(qrModal, true));
+
+  // gallery
+  function openGallery(){ if(!gallery||!backdrop) return; gallery.hidden=false; gallery.offsetHeight; gallery.classList.add('open'); backdrop.hidden=false; }
+  function closeGallerySmooth(){ if(!gallery||!backdrop) return; gallery.classList.remove('open'); setTimeout(()=>{ setHidden(gallery,true); setHidden(backdrop,true); },250); }
+  on(btnGallery,'click', async ()=>{ await renderGallery(); openGallery(); });
+  on(btnCloseGallery,'click', closeGallerySmooth);
+  on(backdrop,'click', closeGallerySmooth);
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape' && gallery && !gallery.hidden) closeGallerySmooth(); });
+
+  on(btnWipeGallery,'click', async ()=>{
+    if(!confirm('갤러리를 모두 삭제할까요?')) return;
+    const keys = await dbAllKeys();
+    for(const k of keys) await dbDel(k);
+    await renderGallery();
+  });
+
+  async function renderGallery(){
+    const grid = $('#galleryGrid'); if(!grid) return; grid.innerHTML='';
+    const keys = await dbAllKeys();
+    const items = [];
+    for(const k of keys){ const v = await dbGet(k); if(v) items.push(v); }
+    items.sort((a,b)=>b.createdAt-a.createdAt);
+
+    for(const it of items){
+      const wrap=document.createElement('div'); wrap.className='g-item';
+      const img=document.createElement('img'); img.src=it.image; img.alt='saved fourcut'; img.title=new Date(it.createdAt).toLocaleString();
+      img.style.cursor='zoom-in'; img.onclick=()=> window.open(it.image,'_blank');
+      const del=document.createElement('button'); del.className='del'; del.innerHTML='×';
+      del.onclick=async()=>{ if(!confirm('이 이미지를 삭제할까요?')) return; await dbDel(`${PHOTO_PREFIX}${it.id}`); await renderGallery(); };
+      wrap.appendChild(img); wrap.appendChild(del); grid.appendChild(wrap);
     }
   }
 
-  // 캡션
-  const cap = (captionInput?.value || '').trim();
-  if (cap){
-    ctx.fillStyle = '#111';
-    ctx.font = `700 ${Math.round(34*dpr)}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(cap, outW/2, outH - Math.round(captionH/2));
-  }
-
-  return canvas.toDataURL('image/jpeg', 0.95);
-}
-
-/* ===== make / save / qr ===== */
-btnMake?.addEventListener('click', async ()=>{
-  if(selected.size!==4) return alert('4장을 선택하세요');
-  if(renderLock) return; renderLock = true;
-  setStep(4);
-
-  try{
-    finalDataUrl = await composeFourcutCanvas();
-
-    // ✅ 저장 (IDB 우선, 실패 시 LS)
-    const id = crypto.randomUUID();
-    const payload = { id, createdAt: Date.now(), image: finalDataUrl };
-    await dbSet(`${PHOTO_PREFIX}${id}`, payload);
-
-    // ✅ 갤러리 열려 있으면 즉시 갱신
-    if (gallery && !gallery.hidden) await renderGallery();
-
-    // 버튼 활성화
-    btnSave.disabled = btnQR.disabled = false;
-  }catch(e){
-    console.error(e);
-    alert('이미지 생성/저장 실패: ' + (e?.message||e));
-  }finally{
-    renderLock=false;
-  }
+  // init
+  updateCounter();
 });
-
-btnSave?.addEventListener('click', ()=>{
-  if(!finalDataUrl) return;
-  const a=document.createElement('a'); a.href=finalDataUrl; a.download='fourcut.jpg'; a.click();
-});
-
-/* ===== QR ===== */
-const qrModal = $('#qrModal'); const qrCanvas = $('#qrCanvas');
-const btnOpenViewer = $('#btnOpenViewer'); const btnSaveQR = $('#btnSaveQR');
-const btnCloseQR = $('#btnCloseQR'); const btnCopyLink = $('#btnCopyLink'); const qrLinkText = $('#qrLinkText');
-
-btnQR?.addEventListener('click', async ()=>{
-  if(!finalDataUrl) return;
-  try{
-    const link = new URL('viewer.html', location.href).toString() + '#img=' + LZString.compressToEncodedURIComponent(finalDataUrl);
-    lastQRLink = link; qrModal.hidden=false;
-    await QRCode.toCanvas(qrCanvas, link, { width:260, errorCorrectionLevel:'M' });
-    qrLinkText.textContent = link;
-  }catch(e){ console.error(e); alert('QR 생성 중 오류'); qrModal.hidden=false; }
-});
-btnOpenViewer?.addEventListener('click', ()=>{ if(lastQRLink) window.open(lastQRLink,'_blank'); });
-btnSaveQR?.addEventListener('click', ()=>{ const a=document.createElement('a'); a.href=qrCanvas.toDataURL('image/png'); a.download='fourcut_qr.png'; a.click(); });
-btnCopyLink?.addEventListener('click', async ()=>{ try{ await navigator.clipboard.writeText(lastQRLink||''); btnCopyLink.textContent='복사됨!'; setTimeout(()=>btnCopyLink.textContent='링크 복사',1200);}catch{} });
-btnCloseQR?.addEventListener('click', ()=>{ qrModal.hidden=true; });
-
-/* ===== gallery ===== */
-function closeGallerySmooth(){ gallery.classList.remove('open'); setTimeout(()=>{ gallery.hidden=true; backdrop.hidden=true; },250); }
-btnGallery?.addEventListener('click', async ()=>{ await renderGallery(); gallery.hidden=false; gallery.offsetHeight; gallery.classList.add('open'); backdrop.hidden=false; });
-btnCloseGallery?.addEventListener('click', closeGallerySmooth);
-backdrop?.addEventListener('click', closeGallerySmooth);
-document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !gallery.hidden) closeGallerySmooth(); });
-
-btnWipeGallery?.addEventListener('click', async ()=>{
-  if(!confirm('갤러리를 모두 삭제할까요?')) return;
-  const keys = await dbAllKeys();
-  for(const k of keys){ if(String(k).startsWith(PHOTO_PREFIX)) await dbDel(k); }
-  await renderGallery();
-});
-
-async function renderGallery(){
-  const grid = $('#galleryGrid'); if(!grid) return; grid.innerHTML='';
-  const keys = await dbAllKeys();
-  const items = [];
-  for(const k of keys){
-    if(String(k).startsWith(PHOTO_PREFIX)){
-      const v = await dbGet(k);
-      if (v) items.push(v);
-    }
-  }
-  items.sort((a,b)=>b.createdAt-a.createdAt);
-
-  for(const it of items){
-    const wrap=document.createElement('div'); wrap.className='g-item';
-    const img=document.createElement('img');
-    img.src=it.image; img.alt='saved fourcut'; img.title=new Date(it.createdAt).toLocaleString();
-    img.style.cursor='zoom-in';
-    img.onclick=()=> window.open(it.image,'_blank');
-
-    const del=document.createElement('button'); del.className='del'; del.innerHTML='×';
-    del.onclick=async()=>{ if(!confirm('이 이미지를 삭제할까요?')) return; await dbDel(`${PHOTO_PREFIX}${it.id}`); await renderGallery(); };
-
-    wrap.appendChild(img); wrap.appendChild(del); grid.appendChild(wrap);
-  }
-}
-
-/* ===== init ===== */
-updateCounter();
