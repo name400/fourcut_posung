@@ -2,12 +2,12 @@
   --bg:#0b0c10; --panel:#111218; --card:#151823; --accent:#21dea7; --primary:#4c82ff;
   --text:#e9eef6; --muted:#9aa3b2; --ring:#21dea780;
 
-  /* 폴라로이드 사용자 색상 (JS에서 변경) */
+  /* 사용자 프레임 색상 (JS에서 변경) */
   --polaroid-bg:#ffffff;
   --busy-bg:#ffffffcc;
   --busy-fg:#111111;
 
-  /* Fourcut 크기 계산용 (데스크톱 기본) */
+  /* 기본 크기 상수 */
   --fc-min: 280px;
   --fc-base: 420px;
   --fc-max: 560px;
@@ -23,11 +23,11 @@ html,body{
 
 /* Topbar */
 .topbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;
-  padding:14px 18px;border-bottom:1px solid #1f2330;background:linear-gradient(180deg,#0d0f15,#0b0c10)}
+  padding:14px 18px;border-bottom:1px solid #1f2330;background:linear-gradient(180deg,#0d0f15,#0b0c0f)}
 .brand{display:flex;align-items:center;gap:12px;font-weight:700}
 .brand .logo{width:64px;height:64px;object-fit:contain;border-radius:12px}
-.brand span{font-size:28px;font-weight:700;line-height:1.2;writing-mode:horizontal-tb !important;white-space:nowrap;}
-.steps{display:flex;align-items:center;gap:10px;color:var(--muted);white-space:nowrap;writing-mode:horizontal-tb !important;}
+.brand span{font-size:28px;font-weight:700;line-height:1.2;writing-mode:horizontal-tb !important;white-space:nowrap}
+.steps{display:flex;align-items:center;gap:10px;color:var(--muted);white-space:nowrap;writing-mode:horizontal-tb !important}
 .step.active{color:var(--text);font-weight:600}
 .sep{opacity:.5}
 .right-actions{display:flex;gap:8px}
@@ -71,11 +71,10 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .input.small{width:120px}
 .color-controls{display:flex;align-items:center;gap:10px}
 
-/* Fourcut Preview (결과 이미지 내부) */
+/* Fourcut Preview (결과 이미지) */
 .preview{display:flex;align-items:center;justify-content:center;overflow:visible}
 .fourcut{
   position:relative;
-  /* 가로/세로에 따라 자동 크기 (모바일/패드에서 유동) */
   width: clamp(
     var(--fc-min),
     min(92vw, var(--fc-base)),
@@ -90,7 +89,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 /* 상단 헤더 */
 .fc-header{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px;text-align:center}
 .fc-logo{width:44px;height:44px;object-fit:contain}
-.fc-title{font-weight:800;font-size:20px;letter-spacing:.2px;writing-mode:horizontal-tb !important;white-space:nowrap;}
+.fc-title{font-weight:800;font-size:20px;letter-spacing:.2px;writing-mode:horizontal-tb !important;white-space:nowrap}
 
 /* 4컷 영역 */
 .fourcut .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -98,7 +97,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .fourcut .cell img{width:100%;height:100%;object-fit:cover}
 
 /* 캡션 */
-.polaroid-cap{text-align:center;margin-top:12px;font-weight:700;writing-mode:horizontal-tb !important;}
+.polaroid-cap{text-align:center;margin-top:12px;font-weight:700;writing-mode:horizontal-tb !important}
 
 /* Actions */
 .actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
@@ -136,18 +135,33 @@ button:disabled{opacity:.5;cursor:not-allowed}
   z-index:99999; transition:opacity 0.3s;
 }
 .flash.active{ opacity:1; }
-
 .big-countdown{
-  position:fixed; top:50%; left:50%;
-  transform:translate(-50%,-50%);
-  font-size:min(18vw,120px);
-  font-weight:900; color:white;
+  position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+  font-size:min(18vw,120px); font-weight:900; color:white;
   text-shadow:0 0 20px black;
   z-index:99998; pointer-events:none;
   writing-mode:horizontal-tb !important;
 }
 
-/* ===== 반응형 ===== */
+/* ===== 반응형 세분화 ===== */
+
+/* 낮은 높이 노트북(1366×768 등) */
+@media (max-height: 820px) and (min-width: 1024px){
+  .container{grid-template-columns:1fr;max-width:860px}
+  .cam{max-height:58svh}
+}
+
+/* 표준 FHD 데스크톱 (1920×1080 근처) */
+@media (min-width: 1400px) and (min-height: 900px){
+  :root{ --fc-max: 640px; --top-ui-space: 200px; }
+  .container{max-width:1400px}
+}
+
+/* QHD/와이드 (2560×1440 근처) */
+@media (min-width: 2300px) and (min-height: 1200px){
+  :root{ --fc-max: 720px; --top-ui-space: 200px; }
+  .container{max-width:1680px}
+}
 
 /* 모바일 (스마트폰) */
 @media (max-width: 767px) {
@@ -157,9 +171,13 @@ button:disabled{opacity:.5;cursor:not-allowed}
     max-width: 380px;
   }
   .thumbs .thumb-grid{ grid-template-columns:repeat(2,1fr); }
+  .topbar{flex-wrap:wrap;gap:8px}
+  .steps{font-size:14px}
+  button,.input{font-size:16px;padding:12px}
+  .cam{max-height:60svh}
 }
 
-/* 태블릿 */
+/* 태블릿 (768~1279) */
 @media (min-width: 768px) and (max-width: 1279px) {
   .container{ grid-template-columns:1fr !important; max-width:100% !important; }
   .fourcut{
@@ -169,13 +187,13 @@ button:disabled{opacity:.5;cursor:not-allowed}
   .thumbs .thumb-grid{ grid-template-columns:repeat(3,1fr); }
 }
 
-/* 데스크톱 (기본 2열) */
+/* 데스크톱 기본 */
 @media (min-width: 1280px) {
   .container{ grid-template-columns:1fr 1fr; max-width:1200px; }
   .fourcut{ width: clamp(280px, 420px, 560px); }
 }
 
-/* 모바일에서 데스크톱 보기 켠 특수 케이스 보정 */
+/* 모바일에서 '데스크톱 사이트' 보기 강제 보정 */
 @media (hover: none) and (pointer: coarse) {
   .container{ grid-template-columns:1fr !important; max-width:100% !important; }
   .fourcut{
