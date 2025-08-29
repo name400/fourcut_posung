@@ -7,7 +7,7 @@ let shots=[];
 let selected=new Set();
 let finalDataUrl=null;
 let autoTimer=null;
-let autoRunning=false;   // 자동 촬영 중인지 여부
+let autoRunning=false;   // 자동 촬영 중 여부
 let currentFacing = "user"; // 기본 전면 카메라
 
 // 카메라 시작
@@ -43,41 +43,40 @@ function triggerFlash(){
 // 카운트다운 표시
 function showCountdown(text){ $("#countdown").textContent=text; }
 
-// 자동 촬영 (6장 연속)
+// 자동 촬영 (6초 루프, 총 6장)
 async function startAutoCapture(){
   shots=[]; selected.clear(); finalDataUrl=null;
   renderThumbs(); renderPreview(); updateCounter();
 
-  let count=0;
   autoRunning=true;
+  let remain=6;
 
-  function oneCycle(sec=6){
-    let remain=sec;
-    showCountdown(remain);
+  if(autoTimer){ clearInterval(autoTimer); }
+  showCountdown(remain);
 
-    autoTimer=setInterval(()=>{
-      remain--;
-      showCountdown(remain>0 ? remain : "");
-      if(remain<=0){
+  autoTimer=setInterval(()=>{
+    if(!autoRunning){
+      clearInterval(autoTimer);
+      showCountdown("");
+      return;
+    }
+
+    remain--;
+    showCountdown(remain>0 ? remain : "");
+
+    if(remain<=0){
+      triggerFlash();
+      doCapture();
+      remain=6; // 다시 6초 초기화
+
+      // 6컷 다 채우면 종료
+      if(shots.length>=6){
+        autoRunning=false;
         clearInterval(autoTimer);
-        triggerFlash();
-        doCapture();
-        count++;
-
-        // 6컷 다 채우면 종료
-        if(count>=6 || shots.length>=6){
-          autoRunning=false;
-          showCountdown("");
-          return;
-        }
-
-        // 다음 사이클 시작
-        if(autoRunning){ setTimeout(()=>oneCycle(sec),1000); }
+        showCountdown("");
       }
-    },1000);
-  }
-
-  oneCycle();
+    }
+  },1000);
 }
 
 // 사진 찍기
@@ -87,7 +86,7 @@ function doCapture(){
   canvas.width=video.videoWidth; canvas.height=video.videoHeight;
   const ctx=canvas.getContext("2d");
 
-  if(currentFacing==="user"){ // 전면 카메라는 좌우반전 캡쳐
+  if(currentFacing==="user"){ // 전면 카메라 좌우반전
     ctx.translate(canvas.width,0);
     ctx.scale(-1,1);
   }
