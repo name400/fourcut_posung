@@ -69,7 +69,6 @@ async function startAutoCapture(){
       doCapture();
       remain=6; // 다시 6초 초기화
 
-      // 6컷 다 채우면 종료
       if(shots.length>=6){
         autoRunning=false;
         clearInterval(autoTimer);
@@ -184,13 +183,15 @@ $("#frameColor").oninput=()=>{ $(".fourcut").style.backgroundColor=$("#frameColo
 // 버튼 이벤트
 $("#btnStart").onclick=async()=>{ await startCamera(); startAutoCapture(); };
 
-// 수동 촬영 (자동촬영 중지 + 카운트다운 초기화)
+// 수동 촬영 (카운트다운 리셋만)
 $("#btnShot").onclick=()=>{ 
-  if(autoTimer){ clearInterval(autoTimer); autoTimer=null; }
-  autoRunning=false;
-  showCountdown("");
   triggerFlash();
-  doCapture(); 
+  doCapture();
+
+  // 카운트다운 리셋 (자동촬영 루프 유지)
+  if(autoRunning){
+    showCountdown(6);
+  }
 };
 
 $("#caption").oninput=()=>renderPreview();
