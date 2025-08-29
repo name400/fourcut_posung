@@ -153,7 +153,7 @@ function showQR(dataUrl){
   const modal=$("#qrModal");
   modal.hidden=false;
 
-  // QR 찍으면 이미지 다운로드 강제 시작하도록 dataUrl을 Blob URL로 변환
+  // QR 찍으면 이미지 다운로드 강제 시작하도록 Blob URL 생성
   const blob = dataURLtoBlob(dataUrl);
   const url = URL.createObjectURL(blob);
 
