@@ -1,101 +1,94 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>2025 보성제 | 네컷</title>
-  <link rel="stylesheet" href="./style.css?v=20250829" />
-  <script defer src="https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/idb-keyval.iife.min.js"></script>
-  <script defer src="./main.js?v=20250829"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>보성제 4컷 포토</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- 상단 바 -->
-  <header class="topbar">
+  <!-- 상단바 -->
+  <div class="topbar">
     <div class="brand">
-      <img src="posung.png" class="logo" alt="logo" />
+      <img src="posung.png" class="logo" alt="logo">
       <span>2025 보성제</span>
     </div>
     <div class="steps">
-      <span class="step active">1. 촬영</span><span class="sep">></span>
-      <span class="step">2. 선택</span><span class="sep">></span>
-      <span class="step">3. 편집</span><span class="sep">></span>
-      <span class="step">4. 저장</span>
+      <span class="step">1. 촬영</span>
+      <span class="sep">></span>
+      <span class="step">2. 선택</span>
+      <span class="sep">></span>
+      <span class="step">3. 합성</span>
     </div>
     <div class="right-actions">
-      <button id="btnStart" class="primary">카메라 시작</button>
-      <button id="btnGallery" class="text">갤러리</button>
+      <button id="btnGallery" class="ghost">갤러리</button>
     </div>
-  </header>
+  </div>
 
-  <!-- 메인 -->
-  <main class="container">
-    <!-- 카메라 -->
-    <section class="panel cam-panel">
+  <!-- 메인 컨테이너 -->
+  <div class="container">
+    <!-- 카메라 패널 -->
+    <div class="panel">
       <div class="card cam">
         <video id="video" autoplay playsinline></video>
         <div class="cam-overlay">
           <div class="overlay-row top">
-            <button id="btnFlip" class="ghost">전환</button>
-            <button id="btnReset" class="ghost">초기화</button>
+            <button id="btnFlip" class="ghost">카메라 전환</button>
+            <button id="btnReset" class="ghost">리셋</button>
           </div>
           <div class="overlay-row bottom">
-            <div id="shotCounter" class="counter">0 / 6</div>
+            <span id="shotCounter" class="counter">0 / 6</span>
             <button id="btnShot" class="primary" disabled>촬영</button>
           </div>
         </div>
       </div>
-      <canvas id="hiddenCanvas" hidden></canvas>
-    </section>
+    </div>
 
-    <!-- 썸네일 -->
-    <section class="panel thumbs">
-      <div class="card">
+    <!-- 사진 선택 & 합성 패널 -->
+    <div class="panel">
+      <!-- 썸네일 -->
+      <div class="card thumbs">
         <div id="thumbGrid" class="thumb-grid"></div>
-        <div class="hint">최대 6장까지 촬영, 4장을 선택하세요.</div>
+        <div class="hint">최대 6장 촬영 후 4장을 선택하세요</div>
       </div>
-    </section>
 
-    <!-- 결과 미리보기 + 옵션 -->
-    <section class="panel result">
+      <!-- 폴라로이드 미리보기 -->
       <div class="card preview">
         <div id="fourcut" class="fourcut polaroid">
           <div class="fc-header">
-            <img src="posung.png" class="fc-logo" alt="logo"/>
-            <span class="fc-title">2025 보성제</span>
+            <img src="posung.png" class="fc-logo">
+            <div class="fc-title">2025 보성제</div>
           </div>
           <div id="finalGrid" class="grid"></div>
-          <div id="polaroidCap" class="polaroid-cap"> </div>
+          <div id="polaroidCap" class="polaroid-cap"></div>
         </div>
       </div>
 
-      <div class="frame-picker card">
-        <div class="only-polaroid">Polaroid 색상</div>
-        <div class="color-controls">
-          <input id="frameColor" type="color" value="#ffffff"/>
-          <input id="frameColorHex" class="input small" value="#ffffff"/>
-        </div>
-        <label class="cap-label">캡션</label>
-        <input id="caption" class="input" placeholder="텍스트 입력" />
-      </div>
+      <label class="cap-label">캡션 입력</label>
+      <input id="caption" class="input" type="text" placeholder="문구를 입력하세요">
 
+      <!-- 액션 버튼 -->
       <div class="actions">
-        <button id="btnMake" class="primary" disabled>이미지 만들기</button>
-        <button id="btnSave" class="ghost" disabled>저장</button>
+        <button id="btnMake" class="accent" disabled>4컷 만들기</button>
+        <button id="btnSave" class="primary" disabled>저장</button>
       </div>
-    </section>
-  </main>
+    </div>
+  </div>
 
-  <!-- 갤러리 -->
-  <aside id="gallery" class="drawer" hidden>
+  <!-- 갤러리 Drawer -->
+  <div id="gallery" class="drawer" hidden>
     <div class="drawer-head">
       <span>갤러리</span>
       <div>
-        <button id="btnWipeGallery" class="text">전체삭제</button>
+        <button id="btnWipeGallery" class="text">모두 삭제</button>
         <button id="btnCloseGallery" class="text">닫기</button>
       </div>
     </div>
     <div id="galleryGrid" class="drawer-body"></div>
-  </aside>
+  </div>
   <div id="backdrop" class="backdrop" hidden></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="main.js"></script>
 </body>
 </html>
