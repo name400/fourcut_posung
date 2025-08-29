@@ -59,13 +59,22 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .input.small{width:120px}
 .color-controls{display:flex;align-items:center;gap:10px}
 
-/* Fourcut Preview */
+/* Fourcut Preview (결과 이미지 내부) */
 .preview{display:flex;align-items:center;justify-content:center}
 .fourcut{position:relative;width:100%;max-width:420px;border-radius:20px;padding:16px;background:var(--polaroid-bg);color:#111;margin:0 auto}
 .fourcut.polaroid{padding-bottom:42px}
+
+/* 상단 헤더(로고+제목) */
+.fc-header{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px;text-align:center}
+.fc-logo{width:44px;height:44px;object-fit:contain}
+.fc-title{font-weight:800;font-size:20px;letter-spacing:.2px}
+
+/* 4컷 영역 */
 .fourcut .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .fourcut .cell{background:#dbe1ee;border-radius:12px;overflow:hidden;aspect-ratio:3/4;display:flex;align-items:center;justify-content:center}
 .fourcut .cell img{width:100%;height:100%;object-fit:cover}
+
+/* 캡션(아래) */
 .polaroid-cap{text-align:center;margin-top:12px;font-weight:700}
 
 /* Actions */
@@ -90,7 +99,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .backdrop{position:fixed;inset:0;background:#0008;z-index:8999}
 .backdrop[hidden]{display:none!important}
 
-/* Busy overlay (색 대비 자동 조절을 위해 CSS 변수 사용) */
+/* Busy overlay */
 .busy{position:absolute;inset:0;display:flex;gap:10px;align-items:center;justify-content:center;background:var(--busy-bg);color:var(--busy-fg);border-radius:16px;pointer-events:none}
 .spinner{width:18px;height:18px;border-radius:50%;border:3px solid #ffffff50;border-top-color:#fff;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
