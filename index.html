@@ -17,7 +17,7 @@
   <script defer src="./main.js"></script>
 </head>
 <body>
-  <!-- 상단: 로고/제목 유지 -->
+  <!-- 상단: 로고/제목 유지(페이지 UI) -->
   <header class="topbar">
     <div class="brand">
       <img src="posung.png" alt="로고" class="logo" />
@@ -76,8 +76,13 @@
       </div>
 
       <div class="card preview">
-        <!-- 기본: 폴라로이드 -->
+        <!-- ★ 결과 이미지 안쪽 상단 헤더 추가 -->
         <div id="fourcut" class="fourcut polaroid">
+          <div class="fc-header">
+            <img src="posung.png" alt="로고" class="fc-logo" />
+            <div class="fc-title">2025 보성제</div>
+          </div>
+
           <div class="grid" id="finalGrid"></div>
           <div class="polaroid-cap" id="polaroidCap"></div>
 
