@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>2025 보성제 | 네컷</title>
   <link rel="stylesheet" href="./style.css" />
-  <!-- html-to-image, QRCode, idb 라이브러리 -->
   <script defer src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/idb-keyval.iife.min.js"></script>
@@ -30,10 +29,8 @@
     </div>
   </header>
 
-  <!-- 메인 컨테이너 -->
   <main class="container">
-
-    <!-- 카메라 패널 -->
+    <!-- 카메라 -->
     <section class="panel cam-panel">
       <div class="card cam">
         <video id="video" autoplay playsinline></video>
@@ -51,7 +48,7 @@
       <canvas id="hiddenCanvas" hidden></canvas>
     </section>
 
-    <!-- 썸네일 / 선택 -->
+    <!-- 썸네일 -->
     <section class="panel thumbs">
       <div class="card">
         <div id="thumbGrid" class="thumb-grid"></div>
@@ -59,7 +56,7 @@
       </div>
     </section>
 
-    <!-- 결과 미리보기 -->
+    <!-- 결과 -->
     <section class="panel result">
       <div class="card preview">
         <div id="fourcut" class="fourcut polaroid">
@@ -107,15 +104,10 @@
   <!-- 갤러리 -->
   <aside id="gallery" class="drawer" hidden>
     <div class="drawer-head">
-      <span>갤러리</span>
+      <span>📂 갤러리</span>
       <div>
         <button id="btnWipeGallery" class="text">전체삭제</button>
         <button id="btnCloseGallery" class="text">닫기</button>
       </div>
     </div>
-    <div id="galleryGrid" class="drawer-body"></div>
-  </aside>
-  <div id="backdrop" class="backdrop" hidden></div>
-
-</body>
-</html>
+    <div id="galleryGrid" class="drawer-bo
