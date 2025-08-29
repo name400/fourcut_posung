@@ -1,8 +1,8 @@
-/* ====== helpers ====== */
+/* ===== helpers ===== */
 const $ = (q) => document.querySelector(q);
 const $$ = (q) => document.querySelectorAll(q);
 
-/* ====== elements ====== */
+/* ===== elements ===== */
 const video = $('#video');
 const btnStart = $('#btnStart');
 const btnShot = $('#btnShot');
@@ -23,9 +23,12 @@ const gallery = $('#gallery');
 const btnCloseGallery = $('#btnCloseGallery');
 const btnWipeGallery = $('#btnWipeGallery');
 const busyEl = $('#busy');
-const backdrop = document.getElementById('backdrop');
+const backdrop = $('#backdrop');
+const colorRow = $('#colorRow');
+const frameColor = $('#frameColor');
+const frameColorHex = $('#frameColorHex');
 
-/* ====== storage (idb → localStorage fallback) ====== */
+/* ===== storage (idb → fallback) ===== */
 const idb = (window.idbKeyval && typeof window.idbKeyval.set === 'function') ? {
   set: window.idbKeyval.set,
   get: window.idbKeyval.get,
@@ -39,23 +42,17 @@ const idb = (window.idbKeyval && typeof window.idbKeyval.set === 'function') ? {
 };
 const { set: idbSet, get: idbGet, keys: idbKeys, del: idbDel } = idb;
 
-/* ====== state ====== */
+/* ===== state ===== */
 let stream = null;
-let shots = [];            // captured dataURLs (max 6)
-let selected = new Set();  // indexes of chosen 4
+let shots = [];
+let selected = new Set();
 let finalDataUrl = null;
 let lastQRLink = null;
 let facing = 'user';
 
-/* ====== UI helpers ====== */
-function setStep(n){
-  const steps = [...$$('.step')];
-  steps.forEach((el,i)=> el.classList.toggle('active', i===n-1));
-}
-function updateCounter(){
-  shotCounter.textContent = `${shots.length} / 6`;
-  setStep(shots.length === 6 ? 2 : 1);
-}
+/* ===== UI helpers ===== */
+function setStep(n){ [...$$('.step')].forEach((el,i)=> el.classList.toggle('active', i===n-1)); }
+function updateCounter(){ shotCounter.textContent = `${shots.length} / 6`; setStep(shots.length===6?2:1); }
 function renderThumbs(){
   thumbGrid.innerHTML = '';
   shots.forEach((src, idx)=>{
@@ -64,188 +61,163 @@ function renderThumbs(){
     d.onclick = ()=>{
       if(selected.has(idx)) selected.delete(idx);
       else if(selected.size < 4) selected.add(idx);
-      renderThumbs();
-      renderPreview();
+      renderThumbs(); renderPreview();
       btnMake.disabled = !(selected.size===4);
       if(selected.size===4) setStep(3);
     };
-    const img = document.createElement('img');
-    img.src = src;
-    d.appendChild(img);
+    const img = document.createElement('img'); img.src = src; d.appendChild(img);
     thumbGrid.appendChild(d);
   });
 }
 function renderPreview(){
   finalGrid.innerHTML = '';
   [...selected].slice(0,4).forEach(i=>{
-    const cell = document.createElement('div');
-    cell.className = 'cell';
-    const img = document.createElement('img');
-    img.src = shots[i];
-    cell.appendChild(img);
-    finalGrid.appendChild(cell);
+    const cell = document.createElement('div'); cell.className = 'cell';
+    const img = document.createElement('img'); img.src = shots[i];
+    cell.appendChild(img); finalGrid.appendChild(cell);
   });
   polaroidCap.textContent = fourcut.classList.contains('polaroid') ? (captionInput.value || ' ') : '';
 }
 
-/* ====== camera ====== */
+/* ===== Camera ===== */
 async function startCamera(){
   try{
     if (stream) stopCamera();
-
-    const constraints = {
-      video: { facingMode: { ideal: facing }, width: { ideal: 1280 }, height: { ideal: 720 } },
-      audio: false
-    };
-
+    const constraints = { video: { facingMode:{ideal:facing}, width:{ideal:1280}, height:{ideal:720} }, audio:false };
     stream = await navigator.mediaDevices.getUserMedia(constraints);
     video.srcObject = stream;
-
-    await new Promise(resolve=>{
-      if (video.readyState >= 1 && video.videoWidth) return resolve();
-      video.onloadedmetadata = ()=> resolve();
+    await new Promise(res=>{
+      if (video.readyState >= 1 && video.videoWidth) return res();
+      video.onloadedmetadata = ()=> res();
     });
-
     btnShot.disabled = false;
   }catch(e){
     console.error('getUserMedia error', e);
-    let msg = '카메라 접근 실패';
-    if (e.name === 'NotAllowedError' || e.name === 'SecurityError') {
-      msg = '카메라 권한이 차단되어 있습니다. 브라우저/OS 권한을 확인하세요.';
-    } else if (!window.isSecureContext) {
-      msg = 'HTTPS(또는 localhost)에서만 카메라 사용이 가능합니다.';
-    } else {
-      msg = `${msg}: ${e.name} ${e.message || ''}`;
-    }
+    let msg='카메라 접근 실패';
+    if (e.name==='NotAllowedError'||e.name==='SecurityError') msg='카메라 권한이 차단되어 있습니다. 브라우저/OS 권한을 허용해 주세요.';
+    else if (!window.isSecureContext) msg='HTTPS(또는 localhost)에서만 카메라 사용이 가능합니다.';
+    else msg += `: ${e.name} ${e.message||''}`;
     alert(msg);
   }
 }
-function stopCamera(){
-  try{ stream?.getTracks()?.forEach(t=>t.stop()); }catch{}
-  stream = null;
-}
+function stopCamera(){ try{ stream?.getTracks()?.forEach(t=>t.stop()); }catch{} stream=null; }
 
-/* ====== event wiring ====== */
+/* ===== Events ===== */
 btnStart.onclick = startCamera;
-btnFlip.onclick = async ()=>{ facing = (facing === 'user') ? 'environment' : 'user'; await startCamera(); };
+btnFlip.onclick = async ()=>{ facing = (facing==='user')?'environment':'user'; await startCamera(); };
 btnReset.onclick = ()=>{
-  shots = [];
-  selected = new Set();
-  finalDataUrl = null;
-  lastQRLink = null;
-  btnMake.disabled = true;
-  btnSave.disabled = true;
-  btnQR.disabled = true;
-  renderThumbs();
-  renderPreview();
-  updateCounter();
+  shots=[]; selected=new Set(); finalDataUrl=null; lastQRLink=null;
+  btnMake.disabled = btnSave.disabled = btnQR.disabled = true;
+  renderThumbs(); renderPreview(); updateCounter();
 };
 
-/* ====== capture ====== */
+/* Capture */
 btnShot.onclick = ()=>{
-  if(!stream) return;
-  if(shots.length >= 6) return;
-
-  if(!video.videoWidth || !video.videoHeight){
-    alert("카메라 초기화 중입니다. 잠시 후 다시 시도하세요.");
-    return;
-  }
-
-  const w = video.videoWidth;
-  const h = video.videoHeight;
-
-  hiddenCanvas.width = w;
-  hiddenCanvas.height = h;
-
-  const ctx = hiddenCanvas.getContext('2d');
-  ctx.drawImage(video, 0, 0, w, h);
-
-  const dataUrl = hiddenCanvas.toDataURL('image/jpeg', 0.9);
-  shots.push(dataUrl);
-
-  updateCounter();
-  renderThumbs();
-  if(shots.length===6) btnShot.disabled = true;
+  if(!stream || shots.length>=6) return;
+  if(!video.videoWidth || !video.videoHeight){ alert('카메라 초기화 중입니다. 잠시만…'); return; }
+  hiddenCanvas.width = video.videoWidth; hiddenCanvas.height = video.videoHeight;
+  hiddenCanvas.getContext('2d').drawImage(video,0,0,hiddenCanvas.width,hiddenCanvas.height);
+  shots.push(hiddenCanvas.toDataURL('image/jpeg',0.9));
+  updateCounter(); renderThumbs();
+  if(shots.length===6) btnShot.disabled=true;
 };
 
-/* frame pills */
+/* Frame pills (polaroid 기본, solid는 색상 적용) */
 $$('.pill').forEach(p=>{
   p.onclick = ()=>{
-    $$('.pill').forEach(x=>x.classList.remove('selected'));
-    p.classList.add('selected');
-    fourcut.classList.remove('classic','black','polaroid');
-    fourcut.classList.add(p.dataset.frame);
-    renderPreview();
-    setStep(3);
+    $$('.pill').forEach(x=>x.classList.remove('selected')); p.classList.add('selected');
+    fourcut.classList.remove('polaroid','solid'); fourcut.classList.add(p.dataset.frame);
+    const solid = p.dataset.frame==='solid';
+    colorRow.hidden = !solid;
+    if (solid){
+      applySolidColor(frameColor.value);
+    }else{
+      fourcut.style.setProperty('--solid',''); // reset
+    }
+    renderPreview(); setStep(3);
   };
+});
+
+/* Color sync & apply */
+function applySolidColor(hex){
+  // 안전검사 (#RRGGBB)
+  const ok = /^#([0-9a-f]{6})$/i.test(hex);
+  const value = ok ? hex : '#111111';
+  frameColor.value = value; frameColorHex.value = value;
+  fourcut.style.setProperty('--solid', value);
+}
+frameColor.addEventListener('input', e=> applySolidColor(e.target.value));
+frameColorHex.addEventListener('input', e=>{
+  let v = e.target.value.trim();
+  if(!v.startsWith('#')) v = '#' + v;
+  if(v.length===4){ // #abc -> #aabbcc
+    v = '#' + v[1]+v[1]+v[2]+v[2]+v[3]+v[3];
+  }
+  if(/^#([0-9a-f]{6})$/i.test(v)) applySolidColor(v);
 });
 captionInput.addEventListener('input', ()=> renderPreview());
 
-/* ====== image load helpers ====== */
+/* 이미지 로드 보조 */
 function waitImage(img){
-  return new Promise((resolve, reject)=>{
-    if (img.complete && img.naturalWidth > 0) return resolve();
-    img.onload = () => resolve();
-    img.onerror = () => reject(new Error('이미지 로드 실패: ' + (img.src || '(unknown)')));
+  return new Promise((resolve,reject)=>{
+    if(img.complete && img.naturalWidth>0) return resolve();
+    img.onload = ()=>resolve();
+    img.onerror = ()=>reject(new Error('이미지 로드 실패'));
   });
 }
 
-/* ====== make final image ====== */
+/* Make final image (오버레이 타임아웃 포함) */
+const RENDER_TIMEOUT_MS = 12000;
 btnMake.onclick = async ()=>{
   if(selected.size!==4) return alert('4장을 선택하세요');
-  if(!window.htmlToImage){
-    alert('이미지 생성 모듈이 로드되지 않았습니다.');
-    return;
-  }
+  if(!window.htmlToImage) return alert('이미지 모듈 로드 실패. 새로고침 해주세요.');
 
   setStep(4);
   busyEl.hidden = false;
 
   try{
-    if (document.fonts && document.fonts.ready) {
-      try { await Promise.race([document.fonts.ready, new Promise((_,rej)=>setTimeout(()=>rej(new Error('fonts timeout')), 3000))]); } catch(_) {}
+    // 폰트 대기(최대 3초)
+    if(document.fonts && document.fonts.ready){
+      try{ await Promise.race([document.fonts.ready, new Promise((_,rej)=>setTimeout(()=>rej(new Error('fonts-timeout')),3000))]); }catch{}
     }
-
-    // 내부 이미지 모두 로딩 보장
+    // 내부 이미지(썸네일들) 로드 보장
     const imgs = Array.from(fourcut.querySelectorAll('img'));
     await Promise.all(imgs.map(img => (img.decode ? img.decode().catch(()=>waitImage(img)) : waitImage(img))));
 
     const rect = fourcut.getBoundingClientRect();
-    const width = Math.round(rect.width);
-    const height = Math.round(rect.height);
-
+    const width = Math.round(rect.width), height = Math.round(rect.height);
     const options = {
-      quality: 0.85, width, height,
-      canvasWidth: width, canvasHeight: height,
-      pixelRatio: 1, cacheBust: true,
-      filter: (node)=> !(node.id === 'busy' || node.classList?.contains('busy')),
+      quality:0.85, width, height, canvasWidth:width, canvasHeight:height, pixelRatio:1, cacheBust:true,
+      filter:(node)=>!(node.id==='busy' || node.classList?.contains('busy'))
     };
 
-    const dataUrl = await htmlToImage.toJpeg(fourcut, options);
-    finalDataUrl = dataUrl;
+    const dataUrl = await Promise.race([
+      htmlToImage.toJpeg(fourcut, options),
+      new Promise((_,rej)=>setTimeout(()=>rej(new Error('render-timeout')), RENDER_TIMEOUT_MS))
+    ]);
 
-    btnSave.disabled = false;
-    btnQR.disabled = false;
+    finalDataUrl = dataUrl;
+    btnSave.disabled = btnQR.disabled = false;
 
     const id = crypto.randomUUID();
     await idbSet(`photo:${id}`, { id, createdAt: Date.now(), image: finalDataUrl });
   }catch(e){
     console.error(e);
-    const msg = e?.message || '알 수 없는 오류';
-    alert('이미지 생성 실패: ' + msg);
+    const map = { 'fonts-timeout':'폰트 로딩 지연', 'render-timeout':'렌더 지연(네트워크/메모리 문제)' };
+    alert('이미지 생성 실패: ' + (map[e?.message] || e?.message || '알 수 없는 오류'));
   }finally{
-    busyEl.hidden = true;
+    busyEl.hidden = true; // 반드시 닫기
+    setTimeout(()=> busyEl.hidden = true, 50); // 이중 보장
   }
 };
 
-/* save button */
+/* Save */
 btnSave.onclick = ()=>{
   if(!finalDataUrl) return;
-  const a = document.createElement('a');
-  a.href = finalDataUrl; a.download = 'fourcut.jpg'; a.click();
+  const a=document.createElement('a'); a.href=finalDataUrl; a.download='fourcut.jpg'; a.click();
 };
 
-/* ====== QR modal ====== */
+/* QR */
 const qrModal = $('#qrModal');
 const qrCanvas = $('#qrCanvas');
 const btnOpenViewer = $('#btnOpenViewer');
@@ -257,56 +229,34 @@ const qrLinkText = $('#qrLinkText');
 btnQR.onclick = async ()=>{
   if(!finalDataUrl) return;
   try{
-    const compressed = LZString.compressToEncodedURIComponent(finalDataUrl);
-    const viewerURL = new URL('viewer.html', location.href).toString() + '#img=' + compressed;
-
-    lastQRLink = viewerURL;
-    qrModal.hidden = false;
-    await QRCode.toCanvas(qrCanvas, viewerURL, { width: 260, errorCorrectionLevel: 'M' });
-    qrLinkText.textContent = viewerURL;
+    const link = new URL('viewer.html', location.href).toString() + '#img=' + LZString.compressToEncodedURIComponent(finalDataUrl);
+    lastQRLink = link; qrModal.hidden=false;
+    await QRCode.toCanvas(qrCanvas, link, { width:260, errorCorrectionLevel:'M' });
+    qrLinkText.textContent = link;
   }catch(e){
-    console.error('QR generate error', e);
-    alert('QR 생성 중 오류: ' + (e?.message || e));
-    qrModal.hidden = false;
+    console.error(e); alert('QR 생성 중 오류: ' + (e?.message||e));
+    qrModal.hidden=false;
   }
 };
-btnOpenViewer.onclick = ()=>{ if(lastQRLink) window.open(lastQRLink, '_blank'); };
+btnOpenViewer.onclick = ()=>{ if(lastQRLink) window.open(lastQRLink,'_blank'); };
 btnSaveQR.onclick = ()=>{
-  const dataUrl = qrCanvas.toDataURL('image/png');
-  const a = document.createElement('a'); a.href = dataUrl; a.download = 'fourcut_qr.png'; a.click();
+  const a=document.createElement('a'); a.href=qrCanvas.toDataURL('image/png'); a.download='fourcut_qr.png'; a.click();
 };
-btnCopyLink.onclick = async ()=>{
-  try{
-    await navigator.clipboard.writeText(lastQRLink || '');
-    btnCopyLink.textContent = '복사됨!'; setTimeout(()=> btnCopyLink.textContent = '링크 복사', 1200);
-  }catch{}
-};
-btnCloseQR.onclick = ()=>{ qrModal.hidden = true; };
+btnCopyLink.onclick = async ()=>{ try{ await navigator.clipboard.writeText(lastQRLink||''); btnCopyLink.textContent='복사됨!'; setTimeout(()=>btnCopyLink.textContent='링크 복사',1200);}catch{} };
+btnCloseQR.onclick = ()=>{ qrModal.hidden=true; };
 
-/* ====== gallery drawer ====== */
-function closeGallerySmooth(){
-  gallery.classList.remove('open');
-  setTimeout(()=>{
-    gallery.hidden = true;
-    backdrop.hidden = true;
-  }, 250);
-}
-btnGallery.onclick = async ()=>{
-  await renderGallery();
-  gallery.hidden = false;
-  gallery.offsetHeight;
-  gallery.classList.add('open');
-  backdrop.hidden = false;
-};
+/* Gallery drawer */
+function closeGallerySmooth(){ gallery.classList.remove('open'); setTimeout(()=>{ gallery.hidden=true; backdrop.hidden=true; },250); }
+btnGallery.onclick = async ()=>{ await renderGallery(); gallery.hidden=false; gallery.offsetHeight; gallery.classList.add('open'); backdrop.hidden=false; };
 btnCloseGallery.onclick = closeGallerySmooth;
 backdrop.onclick = closeGallerySmooth;
-document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape' && !gallery.hidden) closeGallerySmooth(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !gallery.hidden) closeGallerySmooth(); });
 
 /* 전체 삭제 */
 btnWipeGallery.onclick = async ()=>{
   if(!confirm('갤러리를 모두 삭제할까요?')) return;
   const keys = await idbKeys();
-  for (const k of keys) if (String(k).startsWith('photo:')) await idbDel(k);
+  for(const k of keys) if(String(k).startsWith('photo:')) await idbDel(k);
   await renderGallery();
   alert('삭제 완료');
 };
@@ -319,25 +269,16 @@ async function renderGallery(){
   for(const k of keys){ if(String(k).startsWith('photo:')) items.push(await idbGet(k)); }
   items.sort((a,b)=>b.createdAt-a.createdAt);
   for(const it of items){
-    const wrap = document.createElement('div');
-    wrap.className = 'g-item';
-    const img = document.createElement('img');
-    img.src = it.image; img.title = new Date(it.createdAt).toLocaleString();
-
-    const del = document.createElement('button');
-    del.className = 'del';
-    del.innerHTML = '×';
-    del.onclick = async ()=>{
-      if(!confirm('이 이미지를 삭제할까요?')) return;
-      await idbDel(`photo:${it.id}`);
-      await renderGallery();
-    };
-
-    wrap.appendChild(img);
-    wrap.appendChild(del);
-    grid.appendChild(wrap);
+    if(!it) continue;
+    const wrap=document.createElement('div'); wrap.className='g-item';
+    const img=document.createElement('img'); img.src=it.image; img.title=new Date(it.createdAt).toLocaleString();
+    const del=document.createElement('button'); del.className='del'; del.innerHTML='×';
+    del.onclick=async()=>{ if(!confirm('이 이미지를 삭제할까요?')) return; await idbDel(`photo:${it.id}`); await renderGallery(); };
+    wrap.appendChild(img); wrap.appendChild(del); grid.appendChild(wrap);
   }
 }
 
 /* init */
 updateCounter();
+/* 기본: 폴라로이드 모드이므로 색상 행 숨김 */
+colorRow.hidden = true;
