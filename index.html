@@ -60,50 +60,19 @@
     <!-- 오른쪽 -->
     <section class="panel">
       <div class="card frame-picker">
-        <!-- 단색 프레임 색상 (RGB/컬러피커) -->
-        <div class="color-row">
-          <div class="rgb">
-            <label>R</label><input id="colR" type="number" min="0" max="255" value="255">
-            <label>G</label><input id="colG" type="number" min="0" max="255" value="255">
-            <label>B</label><input id="colB" type="number" min="0" max="255" value="255">
-          </div>
-          <input id="colHex" type="color" value="#ffffff">
-          <button id="btnApplyColor" class="ghost">색 적용</button>
+        <div class="frame-pills">
+          <button class="pill selected" data-frame="classic">클래식</button>
+          <button class="pill" data-frame="black">블랙</button>
+          <button class="pill" data-frame="polaroid">폴라로이드</button>
         </div>
-
-        <!-- 커스텀 프레임 PNG 오버레이 -->
-        <div class="overlay-row small">
-          <label class="file-btn">
-            <input id="frameFile" type="file" accept="image/png" hidden />
-            프레임 PNG 업로드(선택)
-          </label>
-          <button id="btnOverlayToggle" class="ghost" disabled>오버레이 끄기</button>
-          <button id="btnOverlayRemove" class="text" disabled>오버레이 제거</button>
-        </div>
-
-        <label class="cap-label">캡션(아래)</label>
+        <label class="cap-label">캡션</label>
         <input id="caption" class="input" placeholder="나만의 네컷" maxlength="24" />
       </div>
 
       <div class="card preview">
-        <!-- 폴라로이드 고정 프레임 -->
-        <div id="fourcut" class="fourcut light">
-          <!-- 프레임 상단 로고/문구 -->
-          <div class="inframe-header">
-            <img src="posung.png" alt="로고" class="inframe-logo"/>
-            <span class="inframe-title">2025 보성제</span>
-          </div>
-
-          <!-- 사용자 오버레이 PNG (선택) -->
-          <img id="frameOverlay" class="frame-overlay" hidden alt="frame overlay" />
-
-          <!-- 2x2 사진 -->
+        <div id="fourcut" class="fourcut classic">
           <div class="grid" id="finalGrid"></div>
-
-          <!-- 폴라로이드 하단 캡션 -->
           <div class="polaroid-cap" id="polaroidCap"></div>
-
-          <!-- busy -->
           <div class="busy" id="busy" hidden>
             <div class="spinner"></div><span>이미지 생성 중…</span>
           </div>
@@ -149,5 +118,13 @@
 
   <div id="backdrop" class="backdrop" hidden></div>
   <canvas id="hiddenCanvas" hidden></canvas>
+
+  <!-- 모달 바깥 클릭 닫기 -->
+  <script>
+    document.addEventListener('click', (e)=>{
+      const modal = document.getElementById('qrModal');
+      if (!modal.hidden && e.target === modal) modal.hidden = true;
+    });
+  </script>
 </body>
 </html>
