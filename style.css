@@ -7,13 +7,22 @@
   --busy-bg:#ffffffcc;
   --busy-fg:#111111;
 
-  /* 미리보기 가로폭(보이는 화면), 내보내기는 main.js에서 1080x1620 고정 */
-  --fc-width: min(92vw, 420px);
+  /* ===== 미리보기 폭 자동 계산 =====
+     - 기본 폭: 420px
+     - 가로폭이 좁을 때: 92vw 이하로 축소
+     - 세로가 부족할 때: (뷰포트세로 - 여백) * 2/3 이하로 축소해 '전체가' 보이도록
+  */
+  --fc-base: 420px;
+  --fc-max-vw: 92vw;
+  --top-ui-space: 220px;           /* 상단바/버튼/여백 예상치 (환경에 맞춰 조절 가능) */
 }
 
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
-  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
+html,body{
+  margin:0; height:auto; min-height:100%;
+  background:var(--bg); color:var(--text);
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
+}
 
 /* Topbar */
 .topbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;
@@ -35,7 +44,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
 button:disabled{opacity:.5;cursor:not-allowed}
 
 /* Layout */
-.container{display:grid;grid-template-columns:1fr 1fr;gap:18px;padding:18px;max-width:1200px;margin:0 auto}
+.container{
+  display:grid; grid-template-columns:1fr 1fr; gap:18px; padding:18px;
+  max-width:1200px; margin:0 auto; align-items:start;
+}
 .panel{display:flex;flex-direction:column;gap:14px}
 .card{background:var(--card);border:1px solid #1f2330;border-radius:16px;padding:12px}
 
@@ -63,16 +75,17 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .color-controls{display:flex;align-items:center;gap:10px}
 
 /* Fourcut Preview (결과 이미지 내부) */
-.preview{display:flex;align-items:center;justify-content:center;overflow:visible} /* 잘림 방지 */
+.preview{
+  display:flex; align-items:center; justify-content:center;
+  overflow:visible; /* 잘림 방지 */
+}
 .fourcut{
   position:relative;
-  width:var(--fc-width);
+  /* 폭을 ‘가로/세로 제약 중 더 작은 값’으로 자동 결정 */
+  width: min(var(--fc-base), var(--fc-max-vw), calc((100svh - var(--top-ui-space)) * 0.6667));
   aspect-ratio:2/3; /* 화면 표시 비율 고정 */
-  border-radius:20px;
-  padding:16px;
-  background:var(--polaroid-bg);
-  color:#111;
-  margin:0 auto;
+  border-radius:20px; padding:16px;
+  background:var(--polaroid-bg); color:#111; margin:0 auto;
 }
 .fourcut.polaroid{padding-bottom:42px}
 
@@ -116,11 +129,13 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .spinner{width:18px;height:18px;border-radius:50%;border:3px solid #ffffff50;border-top-color:#fff;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* Responsive */
-@media (max-width:1100px){
+/* ===== 반응형 ===== */
+/* 데스크톱에서도 세로가 모자라면 자동으로 한 컬럼으로 내려 좁은 폭에선 미리보기가 더 커지도록 */
+@media (max-width:1280px){
   .container{grid-template-columns:1fr;max-width:760px}
   .thumbs .thumb-grid{grid-template-columns:repeat(4,1fr)}
 }
+/* 휴대폰/좁은 패드 */
 @media (max-width:700px){
   .topbar{flex-wrap:wrap;gap:8px}
   .steps{font-size:14px}
@@ -128,6 +143,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
   .thumbs .thumb-grid{grid-template-columns:repeat(3,1fr)}
   .cam{max-height:60vh}
 }
+/* 아주 좁은 화면 */
 @media (max-width:420px){
   .thumbs .thumb-grid{grid-template-columns:repeat(2,1fr)}
 }
