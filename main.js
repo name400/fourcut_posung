@@ -21,23 +21,29 @@ const hiddenCanvas = $('#hiddenCanvas');
 const btnGallery = $('#btnGallery');
 const gallery = $('#gallery');
 const btnCloseGallery = $('#btnCloseGallery');
-const btnWipeGallery = $('#btnWipeGallery'); // ✅ 전체삭제 버튼 (ID 일치)
+const btnWipeGallery = $('#btnWipeGallery');
 const busyEl = $('#busy');
 const backdrop = document.getElementById('backdrop');
+
+/* 커스텀 프레임 요소 */
+const frameOverlay  = $('#frameOverlay');
+const frameFile     = $('#frameFile');
+const btnFramePick  = $('#btnFramePick');
+const btnFrameClear = $('#btnFrameClear');
 
 /* ====== storage (idb → localStorage fallback) ====== */
 const idb = (window.idbKeyval && typeof window.idbKeyval.set === 'function') ? {
   set: window.idbKeyval.set,
   get: window.idbKeyval.get,
   keys: window.idbKeyval.keys,
-  del: window.idbKeyval.del,                                // ✅ del 추가
+  del: window.idbKeyval.del,
 } : {
   set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch(_) {} return Promise.resolve(); },
   get: async (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch(_) { return null; } },
-  keys: async () => Object.keys(localStorage),              // fallback에선 전부 반환
-  del: async (k) => { try { localStorage.removeItem(k); } catch(_) {} }, // ✅ del 추가
+  keys: async () => Object.keys(localStorage),
+  del: async (k) => { try { localStorage.removeItem(k); } catch(_) {} },
 };
-const { set: idbSet, get: idbGet, keys: idbKeys, del: idbDel } = idb;     // ✅ del 구조분해
+const { set: idbSet, get: idbGet, keys: idbKeys, del: idbDel } = idb;
 
 /* ====== state ====== */
 let stream = null;
@@ -105,8 +111,9 @@ async function startCamera(){
     stream = await navigator.mediaDevices.getUserMedia(constraints);
     video.srcObject = stream;
 
-    // ✅ videoWidth / videoHeight 보장 위해 metadata 로드 대기
+    // videoWidth / videoHeight 보장
     await new Promise(resolve=>{
+      if (video.readyState >= 1 && video.videoWidth) return resolve();
       video.onloadedmetadata = ()=> resolve();
     });
 
@@ -117,7 +124,7 @@ async function startCamera(){
     if (e.name === 'NotAllowedError' || e.name === 'SecurityError') {
       msg = '카메라 권한이 차단되어 있습니다. 브라우저/OS 권한을 확인하세요.';
     } else if (!window.isSecureContext) {
-      msg = 'HTTPS(또는 localhost)가 아니면 카메라 사용 불가합니다.';
+      msg = 'HTTPS(또는 localhost)에서만 카메라 사용이 가능합니다.';
     } else {
       msg = `${msg}: ${e.name} ${e.message || ''}`;
     }
@@ -145,7 +152,7 @@ btnReset.onclick = ()=>{
   updateCounter();
 };
 
-/* ====== 캡처 (데스크탑 fix 적용) ====== */
+/* ====== capture ====== */
 btnShot.onclick = ()=>{
   if(!stream) return;
   if(shots.length >= 6) return;
@@ -205,12 +212,12 @@ btnMake.onclick = async ()=>{
     const width = Math.round(rect.width);
     const height = Math.round(rect.height);
 
+    // busy 오버레이만 제외
     const filter = (node) => !(node.id === 'busy' || node.classList?.contains('busy'));
 
     const options = {
       quality: 0.85,
-      width,
-      height,
+      width, height,
       canvasWidth: width,
       canvasHeight: height,
       pixelRatio: 1,
@@ -298,14 +305,12 @@ btnCloseGallery.onclick = closeGallerySmooth;
 backdrop.onclick = closeGallerySmooth;
 document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape' && !gallery.hidden) closeGallerySmooth(); });
 
-/* ✅ 전체 삭제 (IndexedDB에서 실제 삭제) */
+/* 전체 삭제 (IndexedDB에서 실제 삭제) */
 btnWipeGallery.onclick = async ()=>{
   if(!confirm('갤러리를 모두 삭제할까요?')) return;
   const keys = await idbKeys();
   for (const k of keys) {
-    if (String(k).startsWith('photo:')) {
-      await idbDel(k);                      // IndexedDB or fallback 삭제
-    }
+    if (String(k).startsWith('photo:')) await idbDel(k);
   }
   await renderGallery();
   alert('삭제 완료');
@@ -324,13 +329,13 @@ async function renderGallery(){
     const img = document.createElement('img');
     img.src = it.image; img.title = new Date(it.createdAt).toLocaleString();
 
-    // (요청대로 개별 X 버튼 로직은 변경하지 않음)
+    // 개별 삭제(X)도 idb에서 제거
     const del = document.createElement('button');
     del.className = 'del';
     del.innerHTML = '×';
     del.onclick = async ()=>{
       if(!confirm('이 이미지를 삭제할까요?')) return;
-      localStorage.removeItem(`photo:${it.id}`);           // 기존 로직 유지
+      await idbDel(`photo:${it.id}`);
       await renderGallery();
     };
 
@@ -339,6 +344,42 @@ async function renderGallery(){
     grid.appendChild(wrap);
   }
 }
+
+/* ====== custom frame upload ====== */
+btnFramePick.onclick = () => frameFile.click();
+
+frameFile.onchange = async (e) => {
+  const f = e.target.files?.[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = async () => {
+    const dataUrl = reader.result;
+    frameOverlay.src = dataUrl;
+    frameOverlay.hidden = false;
+    btnFrameClear.hidden = false;
+    try { await idbSet('customFrame', dataUrl); } catch {}
+  };
+  reader.readAsDataURL(f);
+};
+
+btnFrameClear.onclick = async () => {
+  frameOverlay.src = '';
+  frameOverlay.hidden = true;
+  btnFrameClear.hidden = true;
+  try { await idbDel('customFrame'); } catch {}
+};
+
+// 진입 시 커스텀 프레임 복원
+(async () => {
+  try {
+    const saved = await idbGet('customFrame');
+    if (saved) {
+      frameOverlay.src = saved;
+      frameOverlay.hidden = false;
+      btnFrameClear.hidden = false;
+    }
+  } catch {}
+})();
 
 /* ====== init ====== */
 updateCounter();
