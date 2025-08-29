@@ -392,15 +392,40 @@ async function renderGallery(){
   const items = [];
   for(const k of keys){ if(String(k).startsWith('photo:')) items.push(await idbGet(k)); }
   items.sort((a,b)=>b.createdAt-a.createdAt);
+
   for(const it of items){
-    if(!it) continue;
-    const wrap=document.createElement('div'); wrap.className='g-item';
-    const img=document.createElement('img'); img.src=it.image; img.title=new Date(it.createdAt).toLocaleString();
-    const del=document.createElement('button'); del.className='del'; del.innerHTML='×';
-    del.onclick=async()=>{ if(!confirm('이 이미지를 삭제할까요?')) return; await idbDel(`photo:${it.id}`); await renderGallery(); };
-    wrap.appendChild(img); wrap.appendChild(del); grid.appendChild(wrap);
+    if(!it || !it.image) continue;
+
+    // ✅ 썸네일 래퍼(2:3 비율)
+    const wrap = document.createElement('div');
+    wrap.className = 'g-item';
+
+    // ✅ 이미지: contain으로 표시
+    const img = document.createElement('img');
+    img.src = it.image;
+    img.alt = 'saved fourcut';
+    img.title = new Date(it.createdAt).toLocaleString();
+    // 원본 새 탭 열기(편의)
+    img.style.cursor = 'zoom-in';
+    img.onclick = () => window.open(it.image, '_blank');
+
+    // 삭제 버튼
+    const del = document.createElement('button');
+    del.className = 'del';
+    del.innerHTML = '×';
+    del.onclick = async () => {
+      if(!confirm('이 이미지를 삭제할까요?')) return;
+      await idbDel(`photo:${it.id}`);
+      await renderGallery();
+    };
+
+    wrap.appendChild(img);
+    wrap.appendChild(del);
+    grid.appendChild(wrap);
   }
 }
 
+
 /* ===== init ===== */
 updateCounter();
+
