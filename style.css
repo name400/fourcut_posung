@@ -1,7 +1,7 @@
 :root{
   --bg:#0b0c10; --panel:#111218; --card:#151823; --accent:#21dea7; --primary:#4c82ff;
   --text:#e9eef6; --muted:#9aa3b2; --ring:#21dea780;
-  --frame-bg:#ffffff;
+  --frame-bg:#ffffff; /* 단색 프레임 색상 */
 }
 
 *{box-sizing:border-box}
@@ -51,24 +51,35 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
 .frame-picker .color-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
 .frame-picker .rgb{display:flex;align-items:center;gap:6px}
 .frame-picker .rgb input{width:72px}
+.overlay-row.small{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.file-btn{background:#23283a;color:#cfd6e7;border-radius:10px;padding:10px 12px;cursor:pointer;display:inline-block}
 
-/* ----- Fourcut (폴라로이드 고정) ----- */
+/* ----- Fourcut (폴라로이드) ----- */
 .preview{display:flex;align-items:center;justify-content:center}
 .fourcut{
-  position:relative;width:100%;max-width:420px;border-radius:20px;padding:16px 16px 48px;
-  background:var(--frame-bg); color:#111; margin:0 auto;
+  position:relative;width:100%;max-width:420px;border-radius:20px;
+  padding:12px 12px 44px;background:var(--frame-bg); color:#111; margin:0 auto;
 }
 .fourcut.dark{color:#fff}
-.fourcut .inframe-header{
-  display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px
-}
-.inframe-logo{width:36px;height:36px;object-fit:contain}
-.inframe-title{font-weight:700;font-size:18px}
+.fourcut .inframe-header{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:4px}
+.inframe-logo{width:18px;height:18px;object-fit:contain}
+.inframe-title{font-weight:700;font-size:13px;letter-spacing:.02em}
 
+@media (min-width:700px){
+  .inframe-logo{width:20px;height:20px}
+  .inframe-title{font-size:14px}
+}
+
+.frame-overlay{
+  position:absolute; inset:0; width:100%; height:100%;
+  object-fit:contain; pointer-events:none; z-index:2;
+}
+
+/* 2x2 grid */
 .fourcut .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;position:relative;z-index:1}
 .fourcut .cell{background:#000;border-radius:12px;overflow:hidden;aspect-ratio:3/4;display:flex;align-items:center;justify-content:center}
 .fourcut .cell img{width:100%;height:100%;object-fit:cover}
-.polaroid-cap{text-align:center;margin-top:12px;font-weight:700}
+.polaroid-cap{text-align:center;margin-top:10px;font-weight:700}
 
 /* ----- Actions ----- */
 .actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
@@ -86,7 +97,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
 .drawer.open{transform:translateX(0%)}
 .drawer-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #1f2330}
 .drawer-body{padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;overflow:auto}
+.drawer-body .g-item{position:relative}
 .drawer-body img{width:100%;border-radius:12px;border:1px solid #2b3146}
+.drawer-body .del{position:absolute;top:6px;right:6px;background:#e74c3c;color:#fff;border:0;border-radius:999px;width:28px;height:28px;cursor:pointer}
 
 /* Backdrop for drawer */
 .backdrop{position:fixed;inset:0;background:#0008;z-index:8999}
