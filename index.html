@@ -17,6 +17,7 @@
   <script defer src="./main.js"></script>
 </head>
 <body>
+  <!-- 상단: 로고/제목 그대로 유지 -->
   <header class="topbar">
     <div class="brand">
       <img src="posung.png" alt="로고" class="logo" />
@@ -36,7 +37,7 @@
   </header>
 
   <main class="container">
-    <!-- 왼쪽 -->
+    <!-- 왼쪽: 카메라 + 썸네일 -->
     <section class="panel">
       <div class="card cam">
         <video id="video" autoplay playsinline></video>
@@ -57,22 +58,35 @@
       </div>
     </section>
 
-    <!-- 오른쪽 -->
+    <!-- 오른쪽: 프레임/미리보기/액션 -->
     <section class="panel">
       <div class="card frame-picker">
         <div class="frame-pills">
-          <button class="pill selected" data-frame="classic">클래식</button>
-          <button class="pill" data-frame="black">블랙</button>
-          <button class="pill" data-frame="polaroid">폴라로이드</button>
+          <!-- 기본: 폴라로이드 -->
+          <button class="pill selected" data-frame="polaroid">폴라로이드(기본)</button>
+          <!-- 통합 단색 프레임 -->
+          <button class="pill" data-frame="solid">단색 프레임</button>
         </div>
-        <label class="cap-label">캡션</label>
+
+        <!-- 단색 프레임일 때 색상 조절 -->
+        <div class="color-row" id="colorRow" hidden>
+          <label class="cap-label">프레임 색</label>
+          <div class="color-controls">
+            <input type="color" id="frameColor" value="#ffffff" />
+            <input type="text" id="frameColorHex" class="input small" value="#ffffff" maxlength="7" />
+          </div>
+        </div>
+
+        <label class="cap-label">캡션(아래)</label>
         <input id="caption" class="input" placeholder="나만의 네컷" maxlength="24" />
       </div>
 
       <div class="card preview">
-        <div id="fourcut" class="fourcut classic">
+        <!-- 기본 클래스를 polaroid 로 시작 -->
+        <div id="fourcut" class="fourcut polaroid">
           <div class="grid" id="finalGrid"></div>
           <div class="polaroid-cap" id="polaroidCap"></div>
+          <!-- 진행 오버레이 -->
           <div class="busy" id="busy" hidden>
             <div class="spinner"></div><span>이미지 생성 중…</span>
           </div>
