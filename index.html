@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>보성제|4컷</title>
+  <title>보성제 4컷 포토</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -63,11 +63,23 @@
         </div>
       </div>
 
-      <label class="cap-label">캡션 입력</label>
-      <input id="caption" class="input" type="text" placeholder="문구를 입력하세요">
+      <!-- 새로 추가: 프레임 스타일/글씨색 -->
+      <label class="cap-label">프레임 스타일</label>
+      <select id="frameStyle" class="input small">
+        <option value="polaroid">폴라로이드</option>
+        <option value="solid">단색</option>
+        <option value="gradientLight">그라데이션(밝게)</option>
+        <option value="gradientDark">그라데이션(진하게)</option>
+      </select>
 
       <label class="cap-label">프레임 색상</label>
       <input id="frameColor" class="input small" type="color" value="#ffffff">
+
+      <label class="cap-label">글씨 색상</label>
+      <input id="fontColor" class="input small" type="color" value="#000000">
+
+      <label class="cap-label">캡션 입력</label>
+      <input id="caption" class="input" type="text" placeholder="문구를 입력하세요">
 
       <div class="actions">
         <button id="btnMake" class="accent" disabled>4컷 만들기</button>
@@ -97,4 +109,3 @@
   <script src="main.js"></script>
 </body>
 </html>
-
