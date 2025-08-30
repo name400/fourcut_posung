@@ -145,6 +145,20 @@ async function saveImage(){
   localStorage.setItem("photo:"+id,JSON.stringify(payload));
   await renderGallery();
   alert("저장 완료!");
+
+  // 🔹 자동 리셋 실행
+  resetSession();
+}
+function resetSession(){
+  shots=[];
+  selected.clear();
+  finalDataUrl=null;
+  $("#caption").value="";
+  renderThumbs();
+  renderPreview();
+  updateCounter();
+  $("#btnSave").disabled=true;
+  $("#btnMake").disabled=true;
 }
 
 // 갤러리
@@ -265,3 +279,4 @@ $("#btnFlip").onclick=async()=>{
 // 초기 적용
 updateFrame();
 updateFontColor();
+
