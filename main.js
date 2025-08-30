@@ -136,6 +136,7 @@ async function makeFourcut(){
   finalDataUrl=canvas.toDataURL("image/jpeg",0.92);
   $("#btnSave").disabled=false;
 }
+
 // 저장 (갤러리만)
 async function saveImage(){
   if(!finalDataUrl) return;
@@ -165,8 +166,71 @@ async function renderGallery(){
   }
 }
 
-// 프레임 색상 변경
-$("#frameColor").oninput=()=>{ $(".fourcut").style.backgroundColor=$("#frameColor").value; };
+/* ------------------------
+   프레임/글씨 색상 컨트롤
+-------------------------*/
+
+// 헬퍼: HEX <-> RGB
+function hexToRgb(hex){
+  const m = hex.replace('#','');
+  const bigint = parseInt(m,16);
+  if(m.length===3){
+    const r=(bigint>>8)&0xF, g=(bigint>>4)&0xF, b=bigint&0xF;
+    return {r:r*17, g:g*17, b:b*17};
+  }
+  return { r:(bigint>>16)&255, g:(bigint>>8)&255, b:bigint&255 };
+}
+function rgbToHex({r,g,b}){
+  const h=(n)=>n.toString(16).padStart(2,'0');
+  return `#${h(r)}${h(g)}${h(b)}`;
+}
+function mix(hex1, hex2, t){ // 0~1
+  const a=hexToRgb(hex1), b=hexToRgb(hex2);
+  return rgbToHex({
+    r: Math.round(a.r+(b.r-a.r)*t),
+    g: Math.round(a.g+(b.g-a.g)*t),
+    b: Math.round(a.b+(b.b-a.b)*t),
+  });
+}
+
+// 프레임 적용
+function updateFrame(){
+  const style = $("#frameStyle")?.value || "polaroid";
+  const color = $("#frameColor")?.value || "#ffffff";
+  const fourcut = $("#fourcut");
+
+  if(style==="polaroid"){
+    fourcut.className = "fourcut polaroid";
+    fourcut.style.background = color; // 폴라로이드도 색 커스터마이즈 가능
+  }else if(style==="solid"){
+    fourcut.className = "fourcut solid";
+    fourcut.style.background = color;
+  }else if(style==="gradientLight"){
+    fourcut.className = "fourcut gradient";
+    // 선택색 -> 흰색으로 밝게 번짐
+    const to = "#ffffff";
+    fourcut.style.background = `linear-gradient(135deg, ${color} 0%, ${mix(color,to,0.7)} 100%)`;
+  }else if(style==="gradientDark"){
+    fourcut.className = "fourcut gradient";
+    // 선택색 -> 같은 계열의 진한 색(검정과 믹스)
+    const to = "#000000";
+    fourcut.style.background = `linear-gradient(135deg, ${color} 0%, ${mix(color,to,0.5)} 100%)`;
+  }
+}
+
+// 글씨색 적용 (타이틀 + 캡션)
+function updateFontColor(){
+  const c = $("#fontColor")?.value || "#000000";
+  $(".fc-title").style.color = c;
+  $("#polaroidCap").style.color = c;
+}
+
+/* ------------------------
+   이벤트 바인딩
+-------------------------*/
+$("#frameStyle").oninput = updateFrame;
+$("#frameColor").oninput = updateFrame;
+$("#fontColor").oninput = updateFontColor;
 
 // 버튼 이벤트
 $("#btnStart").onclick=async()=>{ await startCamera(); startAutoCapture(); };
@@ -175,10 +239,9 @@ $("#btnStart").onclick=async()=>{ await startCamera(); startAutoCapture(); };
 $("#btnShot").onclick=()=>{ 
   triggerFlash();
   doCapture();
-
   if(autoRunning){
-    remain = 6;            // 루프 공유 remain 리셋
-    showCountdown(remain); // 화면 즉시 갱신
+    remain = 6;
+    showCountdown(remain);
   }
 };
 
@@ -198,3 +261,7 @@ $("#btnFlip").onclick=async()=>{
   currentFacing = (currentFacing==="user") ? "environment" : "user";
   await startCamera();
 };
+
+// 초기 적용
+updateFrame();
+updateFontColor();
