@@ -317,3 +317,8 @@ function showQRForPhoto(photoUrl) {
   // 5) 백업용 클릭 링크도 같이 세팅
   link.href = wrapperUrl;
 }
+
+const finalUrl = canvas.toDataURL('image/png');
+window.LAST_PHOTO_URL=finalUrl;
+
+
