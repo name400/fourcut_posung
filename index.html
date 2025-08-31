@@ -107,6 +107,17 @@
 
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="main.js"></script>
+  <!-- QR 넣을 자리 + 클릭용 링크(백업) -->
+  <div id="qrBox" style="display:none; padding:16px;">
+    <h3>휴대폰으로 스캔하세요</h3>
+    <div id="qrcode"></div>
+    <p><a id="qrLink" href="#" target="_blank" rel="noopener">링크로 열기(백업)</a></p>
+  </div>
+  
+  <!-- QR 생성 라이브러리 -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
 </body>
 </html>
+
 
