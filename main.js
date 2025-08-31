@@ -280,9 +280,11 @@ updateFontColor();
 ======================== */
 const saveBtn = document.getElementById('btnSave');
 if (saveBtn) {
+  const saveBtn = document.getElementById('btnSave');
+if (saveBtn) {
   saveBtn.onclick = async () => {
     try {
-      // 1) 최종 이미지 dataURL 준비(이미 있으면 재사용)
+      // 1) 최종 이미지 dataURL 확보(없으면 캡처)
       let dataUrl = finalDataUrl;
       if (!dataUrl) {
         const node = document.getElementById('fourcut');
@@ -292,14 +294,14 @@ if (saveBtn) {
         $("#btnSave").disabled = false;
       }
 
-      // 2) dataURL -> Blob
-      const blob = await (await fetch(dataUrl)).blob();
+      // 2) 로컬 갤러리에 저장 (이 줄이 있어야 갤러리 저장됨)
+      await saveImageLocal();
 
-      // 3) Catbox 업로드 (공개 URL 받기)
+      // 3) Catbox 업로드 → 공개 URL
+      const blob = await (await fetch(dataUrl)).blob();
       const fd = new FormData();
       fd.append('reqtype', 'fileupload');
       fd.append('fileToUpload', blob, 'fourcut.png');
-
       const res = await fetch('https://catbox.moe/user/api.php', { method: 'POST', body: fd });
       const url = (await res.text()).trim();
       if (!/^https?:\/\//.test(url)) throw new Error(url);
@@ -308,14 +310,12 @@ if (saveBtn) {
       window.LAST_PHOTO_URL = url;
       showQRForPhoto(url);
 
-      // (옵션) 로컬 갤러리에도 저장하고 싶으면 주석 해제
-      // await saveImageLocal();
+      // (원하면) 작업 초기화
       // resetSession();
 
     } catch (e) {
       console.error(e);
-      alert('업로드/QR 오류: ' + (e?.message || e));
+      alert('저장/업로드/QR 오류: ' + (e?.message || e));
     }
   };
 }
-
