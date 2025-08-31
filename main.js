@@ -1,3 +1,4 @@
+window.LAST_PHOTO_URL='';
 // 유틸
 const $ = (q, r=document)=>r.querySelector(q);
 
@@ -321,4 +322,15 @@ function showQRForPhoto(photoUrl) {
 const finalUrl = canvas.toDataURL('image/png');
 window.LAST_PHOTO_URL=finalUrl;
 
+// 파일 맨 아래쪽 등에 추가(또는 기존 저장 로직을 이걸로 교체)
+const saveBtn = document.getElementById('btnSave');
+if (saveBtn) {
+  saveBtn.onclick = async () => {
+    const node = document.getElementById('fourcut');
+    // html2canvas는 index.html에 이미 로드되어 있음
+    const canvas = await html2canvas(node, { scale: 2, useCORS: true });
+    // 업로드 → URL 획득 → QR 표시
+    uploadAndQRFromCanvas(canvas);
+  };
+}
 
