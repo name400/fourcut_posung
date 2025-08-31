@@ -1,5 +1,3 @@
-window.LAST_PHOTO_URL = '';
-
 // 유틸
 const $ = (q, r=document)=>r.querySelector(q);
 
@@ -9,9 +7,9 @@ let shots=[];
 let selected=new Set();
 let finalDataUrl=null;
 let autoTimer=null;
-let autoRunning=false;
-let currentFacing = "user";
-let remain = 6;
+let autoRunning=false;     // 자동 촬영 중 여부
+let currentFacing = "user"; // 기본 전면 카메라
+let remain = 6;             // 카운트다운 남은 초 (전역)
 
 // 카메라 시작
 async function startCamera(){
@@ -24,11 +22,12 @@ async function startCamera(){
     video.srcObject=stream;
     video.onloadedmetadata=()=> video.play();
 
+    // 전면 카메라는 거울모드
     if(currentFacing==="user") video.classList.add("mirror");
     else video.classList.remove("mirror");
 
     $("#btnShot").disabled=false;
-  }catch(e){
+  }catch(e){ 
     console.error(e);
     alert("카메라 접근 실패 (브라우저/권한 확인)");
   }
@@ -69,7 +68,7 @@ async function startAutoCapture(){
     if(remain<=0){
       triggerFlash();
       doCapture();
-      remain=6;
+      remain=6; // 다시 6초 초기화
 
       if(shots.length>=6){
         autoRunning=false;
@@ -87,16 +86,16 @@ function doCapture(){
   canvas.width=video.videoWidth; canvas.height=video.videoHeight;
   const ctx=canvas.getContext("2d");
 
-  if(currentFacing==="user"){
+  if(currentFacing==="user"){ // 전면 카메라 좌우반전
     ctx.translate(canvas.width,0);
     ctx.scale(-1,1);
   }
   ctx.drawImage(video,0,0,canvas.width,canvas.height);
 
   const dataUrl=canvas.toDataURL("image/jpeg",0.9);
-  if(shots.length<6){
-    shots.push(dataUrl);
-    renderThumbs(); updateCounter();
+  if(shots.length<6){ 
+    shots.push(dataUrl); 
+    renderThumbs(); updateCounter(); 
   }
 }
 
@@ -133,21 +132,23 @@ function renderPreview(){
 async function makeFourcut(){
   if(selected.size!==4) return alert("4장을 선택하세요");
   const node=$("#fourcut");
-  const canvas=await html2canvas(node,{backgroundColor:null,scale:2, useCORS:true});
-  finalDataUrl=canvas.toDataURL("image/png");
+  const canvas=await html2canvas(node,{backgroundColor:null,scale:2});
+  finalDataUrl=canvas.toDataURL("image/jpeg",0.92);
   $("#btnSave").disabled=false;
 }
 
-// (옵션) 로컬 갤러리 저장
-async function saveImageLocal(){
+// 저장 (갤러리만)
+async function saveImage(){
   if(!finalDataUrl) return;
   const id=Date.now();
   const payload={id,createdAt:Date.now(),image:finalDataUrl};
   localStorage.setItem("photo:"+id,JSON.stringify(payload));
   await renderGallery();
-}
+  alert("저장 완료!");
 
-// 리셋
+  // 🔹 자동 리셋 실행
+  resetSession();
+}
 function resetSession(){
   shots=[];
   selected.clear();
@@ -182,6 +183,8 @@ async function renderGallery(){
 /* ------------------------
    프레임/글씨 색상 컨트롤
 -------------------------*/
+
+// 헬퍼: HEX <-> RGB
 function hexToRgb(hex){
   const m = hex.replace('#','');
   const bigint = parseInt(m,16);
@@ -195,7 +198,7 @@ function rgbToHex({r,g,b}){
   const h=(n)=>n.toString(16).padStart(2,'0');
   return `#${h(r)}${h(g)}${h(b)}`;
 }
-function mix(hex1, hex2, t){
+function mix(hex1, hex2, t){ // 0~1
   const a=hexToRgb(hex1), b=hexToRgb(hex2);
   return rgbToHex({
     r: Math.round(a.r+(b.r-a.r)*t),
@@ -212,22 +215,24 @@ function updateFrame(){
 
   if(style==="polaroid"){
     fourcut.className = "fourcut polaroid";
-    fourcut.style.background = color;
+    fourcut.style.background = color; // 폴라로이드도 색 커스터마이즈 가능
   }else if(style==="solid"){
     fourcut.className = "fourcut solid";
     fourcut.style.background = color;
   }else if(style==="gradientLight"){
     fourcut.className = "fourcut gradient";
+    // 선택색 -> 흰색으로 밝게 번짐
     const to = "#ffffff";
     fourcut.style.background = `linear-gradient(135deg, ${color} 0%, ${mix(color,to,0.7)} 100%)`;
   }else if(style==="gradientDark"){
     fourcut.className = "fourcut gradient";
+    // 선택색 -> 같은 계열의 진한 색(검정과 믹스)
     const to = "#000000";
     fourcut.style.background = `linear-gradient(135deg, ${color} 0%, ${mix(color,to,0.5)} 100%)`;
   }
 }
 
-// 글씨색 적용
+// 글씨색 적용 (타이틀 + 캡션)
 function updateFontColor(){
   const c = $("#fontColor")?.value || "#000000";
   $(".fc-title").style.color = c;
@@ -241,9 +246,11 @@ $("#frameStyle").oninput = updateFrame;
 $("#frameColor").oninput = updateFrame;
 $("#fontColor").oninput = updateFontColor;
 
+// 버튼 이벤트
 $("#btnStart").onclick=async()=>{ await startCamera(); startAutoCapture(); };
 
-$("#btnShot").onclick=()=>{
+// 수동 촬영 (자동촬영 루프 유지 + 카운트다운 리셋)
+$("#btnShot").onclick=()=>{ 
   triggerFlash();
   doCapture();
   if(autoRunning){
@@ -254,10 +261,8 @@ $("#btnShot").onclick=()=>{
 
 $("#caption").oninput=()=>renderPreview();
 $("#btnMake").onclick=()=>makeFourcut();
+$("#btnSave").onclick=()=>saveImage();
 
-// ⛔ 기존: $("#btnSave").onclick=()=>saveImage();  (삭제)
-
-// 갤러리 UI
 $("#btnGallery").onclick=async()=>{ await renderGallery(); $("#gallery").hidden=false; $("#gallery").classList.add("open"); $("#backdrop").hidden=false; };
 $("#btnCloseGallery").onclick=()=>{ $("#gallery").classList.remove("open"); setTimeout(()=>$("#gallery").hidden=true,250); $("#backdrop").hidden=true; };
 $("#btnWipeGallery").onclick=()=>{ if(confirm("모두 삭제?")){ Object.keys(localStorage).filter(k=>k.startsWith("photo:")).forEach(k=>localStorage.removeItem(k)); renderGallery(); } };
@@ -265,57 +270,12 @@ $("#backdrop").onclick=()=>{ $("#gallery").classList.remove("open"); setTimeout(
 
 $("#btnReset").onclick=()=>{ shots=[];selected.clear();finalDataUrl=null;renderThumbs();renderPreview();updateCounter(); };
 
+// 카메라 전환
 $("#btnFlip").onclick=async()=>{
   currentFacing = (currentFacing==="user") ? "environment" : "user";
   await startCamera();
 };
-await saveImageLocal();
+
 // 초기 적용
 updateFrame();
 updateFontColor();
-
-/* ========================
-   저장 → 업로드(Catbox) → QR
-   (Firebase 필요 없음)
-======================== */
-const saveBtn = document.getElementById('btnSave');
-if (saveBtn) {
-  const saveBtn = document.getElementById('btnSave');
-if (saveBtn) {
-  saveBtn.onclick = async () => {
-    try {
-      // 1) 최종 이미지 dataURL 확보(없으면 캡처)
-      let dataUrl = finalDataUrl;
-      if (!dataUrl) {
-        const node = document.getElementById('fourcut');
-        const canvas = await html2canvas(node, { scale: 2, useCORS: true, backgroundColor: null });
-        dataUrl = canvas.toDataURL('image/png');
-        finalDataUrl = dataUrl;
-        $("#btnSave").disabled = false;
-      }
-
-      // 2) 로컬 갤러리에 저장 (이 줄이 있어야 갤러리 저장됨)
-      await saveImageLocal();
-
-      // 3) Catbox 업로드 → 공개 URL
-      const blob = await (await fetch(dataUrl)).blob();
-      const fd = new FormData();
-      fd.append('reqtype', 'fileupload');
-      fd.append('fileToUpload', blob, 'fourcut.png');
-      const res = await fetch('https://catbox.moe/user/api.php', { method: 'POST', body: fd });
-      const url = (await res.text()).trim();
-      if (!/^https?:\/\//.test(url)) throw new Error(url);
-
-      // 4) QR 표시
-      window.LAST_PHOTO_URL = url;
-      showQRForPhoto(url);
-
-      // (원하면) 작업 초기화
-      // resetSession();
-
-    } catch (e) {
-      console.error(e);
-      alert('저장/업로드/QR 오류: ' + (e?.message || e));
-    }
-  };
-}
