@@ -269,7 +269,7 @@ $("#btnFlip").onclick=async()=>{
   currentFacing = (currentFacing==="user") ? "environment" : "user";
   await startCamera();
 };
-
+await saveImageLocal();
 // 초기 적용
 updateFrame();
 updateFontColor();
@@ -318,3 +318,4 @@ if (saveBtn) {
     }
   };
 }
+
