@@ -142,9 +142,52 @@
     showQRForPhoto(window.LAST_PHOTO_URL || '');
   });
   </script>
-
+  <!-- Firebase + 업로드→QR (최소) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+  
+    // <<<<< 여기에 본인 firebaseConfig 붙여넣기
+    const firebaseConfig = {
+      apiKey: "YOUR_KEY",
+      authDomain: "YOUR_ID.firebaseapp.com",
+      projectId: "YOUR_ID",
+      storageBucket: "YOUR_ID.appspot.com",
+      messagingSenderId: "XXX",
+      appId: "XXX"
+    };
+    // >>>>>
+  
+    const app = initializeApp(firebaseConfig);
+    const storage = getStorage(app);
+  
+    // canvas → 업로드 → URL → QR
+    window.uploadAndQRFromCanvas = (canvas) => {
+      canvas.toBlob(async (blob) => {
+        const path = `fourcut/${Date.now()}.png`;
+        const ref = sRef(storage, path);
+        await uploadBytes(ref, blob, { contentType: "image/png" });
+        const url = await getDownloadURL(ref);
+        window.LAST_PHOTO_URL = url;   // 이제 비지 않음
+        showQRForPhoto(url);           // 이미 넣어둔 함수 호출(QR 뜸)
+      }, "image/png");
+    };
+  
+    // dataURL(예: html2canvas 결과) → 업로드 → URL → QR
+    window.uploadAndQRFromDataURL = async (dataUrl) => {
+      const blob = await (await fetch(dataUrl)).blob();
+      const path = `fourcut/${Date.now()}.png`;
+      const ref = sRef(storage, path);
+      await uploadBytes(ref, blob, { contentType: "image/png" });
+      const url = await getDownloadURL(ref);
+      window.LAST_PHOTO_URL = url;
+      showQRForPhoto(url);
+    };
+  </script>
+  
 </body>
 </html>
+
 
 
 
