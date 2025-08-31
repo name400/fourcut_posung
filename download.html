@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>사진 다운로드</title>
+<body style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; text-align:center; padding:24px;">
+  <h2>사진을 저장합니다…</h2>
+  <p id="hint" style="opacity:.8">자동으로 저장이 안 되면 아래 이미지를 길게 눌러 저장하거나, 버튼을 누르세요.</p>
+  <div id="imgWrap" style="margin:16px 0;"></div>
+  <p><a id="dlBtn" href="#" download="fourcut.png" style="font-size:18px; text-decoration:none; padding:10px 16px; border:1px solid #ccc; border-radius:8px; display:inline-block;">다운로드</a></p>
+
+<script>
+(async () => {
+  const params = new URLSearchParams(location.search);
+  const u = params.get('u');
+  if (!u) {
+    document.body.innerHTML = '<h3>URL이 없습니다.</h3>';
+    return;
+  }
+
+  // 다운로드 버튼/이미지 표시
+  const a = document.getElementById('dlBtn');
+  a.href = u;
+
+  const img = new Image();
+  img.alt = '저장할 사진';
+  img.style.maxWidth = '100%';
+  img.style.height = 'auto';
+  img.src = u;
+  document.getElementById('imgWrap').appendChild(img);
+
+  // 가능한 브라우저에서는 자동 다운로드 시도
+  try {
+    const click = () => a.click();
+    // iOS Safari는 사용자 제스처 없이 자동 클릭을 차단할 수 있습니다.
+    // 그래도 시도해보고, 안 되면 사용자가 버튼을 누르거나 이미지 길게 눌러 저장하면 됩니다.
+    setTimeout(click, 400);
+  } catch (e) { /* 무시 */ }
+})();
+</script>
+</body>
+</html>
