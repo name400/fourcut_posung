@@ -280,3 +280,40 @@ $("#btnFlip").onclick=async()=>{
 updateFrame();
 updateFontColor();
 
+// photoUrl(최종 사진의 "접근 가능한" URL)을 받아 QR 생성
+function showQRForPhoto(photoUrl) {
+  if (!photoUrl) {
+    alert('QR에 넣을 사진 URL이 없습니다.');
+    return;
+  }
+
+  // 1) QR 표시 영역 보이기
+  const box = document.getElementById('qrBox');
+  const holder = document.getElementById('qrcode');
+  const link = document.getElementById('qrLink');
+  if (!box || !holder || !link) {
+    alert('QR 표시용 요소가 없습니다. index.html에 qrBox/qrcode/qrLink가 있는지 확인하세요.');
+    return;
+  }
+  box.style.display = 'block';
+
+  // 2) 이전 QR 지우기
+  holder.innerHTML = '';
+
+  // 3) (선택) "다운로드 전용 래퍼" URL 만들기 — 스캔 시 자동 저장을 최대한 유도
+  //    Safari/iOS 등 일부 브라우저는 완전 자동 저장을 막습니다. 
+  //    그럴 땐 이미지가 열리고, "길게 눌러 저장" 또는 버튼으로 저장하게 됩니다.
+  const wrapperUrl = `${location.origin}${location.pathname.replace(/\/[^/]*$/, '/')}` +
+                     `download.html?u=${encodeURIComponent(photoUrl)}`;
+
+  // 4) QR 생성 (QR 내용은 wrapperUrl 권장; 직접 photoUrl 넣어도 됨)
+  new QRCode(holder, {
+    text: wrapperUrl,
+    width: 256,
+    height: 256,
+    correctLevel: QRCode.CorrectLevel.M
+  });
+
+  // 5) 백업용 클릭 링크도 같이 세팅
+  link.href = wrapperUrl;
+}
