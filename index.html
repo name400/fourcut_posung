@@ -185,47 +185,11 @@
     };
   </script>
 
-    <!-- Firebase + 업로드→URL→QR (추가) -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
-  
-    // TODO: 네 Firebase 콘솔에서 복사한 설정으로 교체
-    const firebaseConfig = {
-      apiKey: "YOUR_KEY",
-      authDomain: "YOUR_ID.firebaseapp.com",
-      projectId: "YOUR_ID",
-      storageBucket: "YOUR_ID.appspot.com",
-      messagingSenderId: "XXX",
-      appId: "XXX"
-    };
-  
-    const app = initializeApp(firebaseConfig);
-    const storage = getStorage(app);
-  
-    // canvas → 업로드 → URL → QR
-    window.uploadAndQRFromCanvas = (canvas) => {
-      canvas.toBlob(async (blob) => {
-        const ref = sRef(storage, `fourcut/${Date.now()}.png`);
-        await uploadBytes(ref, blob, { contentType: "image/png" });
-        const url = await getDownloadURL(ref);
-        window.LAST_PHOTO_URL = url;
-        showQRForPhoto(url); // QR 즉시 표시
-      }, "image/png");
-    };
-  
-    // dataURL → 업로드 → URL → QR (필요 시)
-    window.uploadAndQRFromDataURL = async (dataUrl) => {
-      const blob = await (await fetch(dataUrl)).blob();
-      const ref = sRef(storage, `fourcut/${Date.now()}.png`);
-      await uploadBytes(ref, blob, { contentType: "image/png" });
-      const url = await getDownloadURL(ref);
-      window.LAST_PHOTO_URL = url;
-      showQRForPhoto(url);
-    };
+    
   </script>
 </body>
 </html>
+
 
 
 
