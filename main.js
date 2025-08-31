@@ -281,12 +281,7 @@ $("#btnFlip").onclick=async()=>{
 updateFrame();
 updateFontColor();
 
-// photoUrl(최종 사진의 "접근 가능한" URL)을 받아 QR 생성
-function showQRForPhoto(photoUrl) {
-  if (!photoUrl) {
-    alert('QR에 넣을 사진 URL이 없습니다.');
-    return;
-  }
+
 
   // 1) QR 표시 영역 보이기
   const box = document.getElementById('qrBox');
@@ -319,8 +314,6 @@ function showQRForPhoto(photoUrl) {
   link.href = wrapperUrl;
 }
 
-const finalUrl = canvas.toDataURL('image/png');
-window.LAST_PHOTO_URL=finalUrl;
 
 // 파일 맨 아래쪽 등에 추가(또는 기존 저장 로직을 이걸로 교체)
 const saveBtn = document.getElementById('btnSave');
@@ -333,4 +326,5 @@ if (saveBtn) {
     uploadAndQRFromCanvas(canvas);
   };
 }
+
 
