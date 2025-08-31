@@ -146,16 +146,6 @@
   import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
-  // 🔴 여기 실제 firebaseConfig 붙여넣기
-  const firebaseConfig = {
-    apiKey: "AIzaSyD7VSwObcpKlE_F93KY-iGMEdGrdKp8odM",
-    authDomain: "constposung.firebaseapp.com",
-    projectId: "constposung",
-    storageBucket: "constposung.firebasestorage.app",
-    messagingSenderId: "689275978966",
-    appId: "1:689275978966:web:b30aeb6783e82b7d4bb577",
-    measurementId: "G-3GWS7HQCFQ"
-  };
 
   // 중복 초기화 방지
   const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
@@ -185,6 +175,7 @@
 
 </body>
 </html>
+
 
 
 
