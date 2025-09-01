@@ -146,7 +146,7 @@ async function saveImage(){
   await renderGallery();
   alert("저장 완료!");
 
-  showQrForFinal();
+  await showQrWithUpload();
   
   // 🔹 자동 리셋 실행
   resetSession();
@@ -333,3 +333,75 @@ updateFontColor();
     }
   };
 })();
+
+/* ===== Cloudinary 업로드 → viewer 링크 → QR ===== */
+
+const CLOUD_NAME    = 'YOUR_CLOUD_NAME';      // ← 본인 값
+const UPLOAD_PRESET = 'YOUR_UNSIGNED_PRESET'; // ← 본인 값
+
+async function uploadFinalToCloudinary(){
+  if (!finalDataUrl) throw new Error('finalDataUrl이 없습니다.');
+  const blob = await (await fetch(finalDataUrl)).blob();
+  const form = new FormData();
+  form.append('file', blob);
+  form.append('upload_preset', UPLOAD_PRESET);
+  const endpoint = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
+  const res = await fetch(endpoint, { method:'POST', body: form });
+  if (!res.ok) throw new Error('업로드 실패');
+  const data = await res.json();
+  return data.secure_url; // 공유 가능한 짧은 URL
+}
+
+function makeViewerUrl(publicUrl){
+  const u = new URL('viewer.html', location.href);
+  u.searchParams.set('img', publicUrl);
+  return u.toString();
+}
+
+function getQrTargets(){
+  let qrDiv = document.getElementById('qr');
+  let viewerLink = document.getElementById('viewerLink');
+  const box = document.getElementById('qrBox');
+  if (qrDiv && viewerLink && box){ box.hidden = false; return { qrDiv, viewerLink }; }
+
+  // QR 박스가 없다면 즉석 오버레이 생성
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  const card = document.createElement('div');
+  card.style.cssText = 'background:#fff;border-radius:12px;padding:16px;text-align:center;max-width:90vw';
+  const title = document.createElement('div');
+  title.textContent = '이 QR을 스캔하세요';
+  title.style.cssText = 'margin-bottom:8px;font-weight:700';
+  qrDiv = document.createElement('div');
+  qrDiv.style.cssText = 'width:220px;height:220px;margin:0 auto 12px;';
+  viewerLink = document.createElement('a');
+  viewerLink.href = '#'; viewerLink.target = '_blank'; viewerLink.rel = 'noopener';
+  viewerLink.textContent = 'viewer 새 탭으로 열기';
+  viewerLink.style.cssText = 'display:inline-block;margin-bottom:8px;';
+  const close = document.createElement('button');
+  close.textContent = '닫기';
+  close.style.cssText = 'display:block;margin:0 auto;border:1px solid #ddd;border-radius:8px;padding:8px 12px;background:#fff;cursor:pointer;';
+  close.onclick = () => document.body.removeChild(overlay);
+  card.append(title, qrDiv, viewerLink, close);
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
+  return { qrDiv, viewerLink };
+}
+
+let _qrInstance = null;
+function ensureQrInstance(el){
+  if (!_qrInstance){
+    _qrInstance = new QRCode(el, { text:'about:blank', width:220, height:220, correctLevel:QRCode.CorrectLevel.M });
+  }
+  return _qrInstance;
+}
+
+async function showQrWithUpload(){
+  const { qrDiv, viewerLink } = getQrTargets();
+  const publicUrl = await uploadFinalToCloudinary(); // 원본 그대로 업로드
+  const viewerUrl = makeViewerUrl(publicUrl);        // viewer.html?img=...
+  const qr = ensureQrInstance(qrDiv);
+  qr.clear();
+  qr.makeCode(viewerUrl);
+  viewerLink.href = viewerUrl;
+}
