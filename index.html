@@ -5,6 +5,50 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>보성제 | 4컷</title>
   <link rel="stylesheet" href="style.css">
+
+  <!-- ✅ QR 팝업 스타일 -->
+  <style>
+    #qrPopup {
+      display:none;
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.6);
+      z-index:10000;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+    }
+    #qrPopup .popup-content {
+      position:relative;
+      background:#fff;
+      padding:24px;
+      border-radius:16px;
+      box-shadow:0 10px 30px rgba(0,0,0,.3);
+      width:min(90vw,400px);
+      text-align:center;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+    }
+    #qrPopup .popup-title {
+      font-size:18px;
+      font-weight:700;
+      margin-bottom:12px;
+    }
+    #qrPopup .close-btn {
+      position:absolute;
+      top:8px; right:12px;
+      font-size:22px;
+      font-weight:700;
+      cursor:pointer;
+    }
+    #qrPopup .close-btn:hover { color:#e00; }
+    #qrPopup canvas {
+      width:100%!important;
+      height:auto!important;
+      max-width:240px!important;
+    }
+  </style>
 </head>
 <body>
   <!-- 상단바 -->
@@ -63,7 +107,7 @@
         </div>
       </div>
 
-      <!-- 새로 추가: 프레임 스타일/글씨색 -->
+      <!-- 프레임 / 색상 / 캡션 -->
       <label class="cap-label">프레임 스타일</label>
       <select id="frameStyle" class="input small">
         <option value="polaroid">폴라로이드</option>
@@ -85,10 +129,6 @@
         <button id="btnMake" class="accent" disabled>4컷 만들기</button>
         <button id="btnSave" class="primary" disabled>저장</button>
       </div>
-      <!-- QR for viewer -->
-      <div id="qrBox" class="qrbox" hidden>
-        <div id="qr"></div>
-      </div>
     </div>
   </div>
 
@@ -109,6 +149,16 @@
   <div id="flash" class="flash"></div>
   <div id="countdown" class="big-countdown"></div>
 
+  <!-- ✅ QR 팝업 구조 -->
+  <div id="qrPopup">
+    <div class="popup-content">
+      <span class="close-btn" onclick="closeQrPopup()">×</span>
+      <div class="popup-title">📲 저장 완료! QR을 스캔하세요</div>
+      <div id="qrPopupContainer"></div>
+    </div>
+  </div>
+
+  <!-- 라이브러리 & JS -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="main.js"></script>
