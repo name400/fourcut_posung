@@ -1,9 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap');
 
 :root {
-  --bg:#fff; --panel:#111218; --card:#151823;
+  --bg:#fff; --panel:#f7f7f7; --card:#fdfdfd;
   --accent:#21dea7; --primary:#ff4c60;
-  --text:#e9eef6; --muted:#9aa3b2; --ring:#21dea780;
+  --text:#111111; --muted:#555555; --ring:#21dea780;
 
   --polaroid-bg:#ffffff;
   --fc-min: 280px;
@@ -156,6 +156,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
   .steps{font-size:13px}
   .cam{max-height:60svh}
 }
+
 
 
 
