@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>촬영 | 보성제 4컷</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="panel">
+    <video id="video" autoplay playsinline></video>
+    <div class="controls">
+      <button id="btnFlip">카메라 전환</button>
+      <button id="btnShot">촬영</button>
+      <span id="shotCounter">0 / 6</span>
+    </div>
+  </div>
+  <button id="btnNext" class="primary" disabled>다음 단계</button>
+
+  <script src="js/camera.js"></script>
+</body>
+</html>
