@@ -156,3 +156,5 @@ button:disabled{opacity:.5;cursor:not-allowed}
   .steps{font-size:13px}
   .cam{max-height:60svh}
 }
+#viewerLink {display: none !important; }
+
