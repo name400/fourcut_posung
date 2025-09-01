@@ -85,6 +85,11 @@
         <button id="btnMake" class="accent" disabled>4컷 만들기</button>
         <button id="btnSave" class="primary" disabled>저장</button>
       </div>
+      <!-- QR for viewer -->
+      <div id="qrBox" class="qrbox" hidden>
+        <div id="qr"></div>
+        <a id="viewerLink" class="btn-inline" href="#" target="_blank" rel="noopener">viewer 열기</a>
+      </div>
     </div>
   </div>
 
@@ -106,6 +111,9 @@
   <div id="countdown" class="big-countdown"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
   <script src="main.js"></script>
 </body>
 </html>
+
