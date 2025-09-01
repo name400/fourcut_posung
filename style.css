@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap');
 
 :root {
-  --bg:#fff; --panel:#f7f7f7; --card:#fdfdfd;
+  --bg:#ffffff; --panel:#f7f7f7; --card:#fdfdfd;
   --accent:#21dea7; --primary:#ff4c60;
   --text:#111111; --muted:#555555; --ring:#21dea780;
 
@@ -20,13 +20,13 @@ html,body{
 }
 
 /* Inputs */
-.input{width:100%; padding:10px 12px; border-radius:10px; border:1px solid #2a2f44; background:#0f1320; color:#e9eef6}
+.input{width:100%; padding:10px 12px; border-radius:10px; border:1px solid #ccc; background:#fff; color:#111}
 .input.small{max-width:220px}
-.cap-label{display:block; margin:8px 0 6px; color:#cfd6e7; font-size:14px}
+.cap-label{display:block; margin:8px 0 6px; color:#333; font-size:14px}
 
 /* Topbar */
 .topbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;
-  padding:14px 18px;border-bottom:1px solid #1f2330;background:linear-gradient(180deg,#0d0f15,#0b0c10)}
+  padding:14px 18px;border-bottom:1px solid #ddd;background:linear-gradient(180deg,#fff,#f7f7f7)}
 .brand{display:flex;align-items:center;gap:12px;font-weight:700}
 .brand .logo{width:48px;height:48px;object-fit:contain;border-radius:8px}
 .brand span{font-size:22px;font-weight:700;line-height:1.2;white-space:nowrap}
@@ -37,10 +37,10 @@ html,body{
 
 /* Buttons */
 .ghost,.text,.primary,.accent{border:0;border-radius:10px;padding:8px 12px;font-weight:600;cursor:pointer}
-.ghost{background:#23283a;color:#cfd6e7}
-.text{background:transparent;color:#cfd6e7}
+.ghost{background:#eee;color:#333}
+.text{background:transparent;color:#333}
 .primary{background:var(--primary);color:#fff}
-.accent{background:var(--accent);color:#0a0c0f}
+.accent{background:var(--accent);color:#fff}
 button:disabled{opacity:.5;cursor:not-allowed}
 
 /* Layout */
@@ -49,17 +49,17 @@ button:disabled{opacity:.5;cursor:not-allowed}
   max-width:1200px; margin:0 auto; align-items:start;
 }
 .panel{display:flex;flex-direction:column;gap:14px}
-.card{background:var(--card);border:1px solid #1f2330;border-radius:16px;padding:12px}
+.card{background:var(--card);border:1px solid #ddd;border-radius:16px;padding:12px}
 
 /* Camera */
 .cam{position:relative;overflow:hidden;aspect-ratio:3/4;display:flex;align-items:center;justify-content:center;max-height:70svh}
-#video{width:100%;height:100%;object-fit:cover;border-radius:12px;background:#0f1320}
+#video{width:100%;height:100%;object-fit:cover;border-radius:12px;background:#f0f0f0}
 #video.mirror{transform:scaleX(-1);}
 .cam-overlay{position:absolute;inset:12px;display:flex;flex-direction:column;gap:10px;pointer-events:none}
 .cam-overlay .overlay-row{display:flex;justify-content:space-between;gap:10px;pointer-events:auto}
 .cam-overlay .overlay-row.bottom{margin-top:auto}
 #btnShot{min-width:96px}
-.counter{background:#0008;padding:6px 10px;border-radius:10px;border:1px solid #ffffff22}
+.counter{background:#0002;padding:6px 10px;border-radius:10px;border:1px solid #0001;color:#111;font-weight:600}
 
 /* Thumbnails */
 .thumbs .thumb-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
@@ -88,24 +88,24 @@ button:disabled{opacity:.5;cursor:not-allowed}
 
 /* 4컷 영역 */
 .fourcut .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.fourcut .cell{background:#dbe1ee;border-radius:12px;overflow:hidden;aspect-ratio:3/4;display:flex;align-items:center;justify-content:center}
+.fourcut .cell{background:#eee;border-radius:12px;overflow:hidden;aspect-ratio:3/4;display:flex;align-items:center;justify-content:center}
 .fourcut .cell img{width:100%;height:100%;object-fit:cover}
 
 /* 캡션 */
-.polaroid-cap{text-align:center;margin-top:12px;font-weight:700}
+.polaroid-cap{text-align:center;margin-top:12px;font-weight:700;color:#111}
 
 /* Actions */
 .actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
-.tiny-hint{color:#94a0b8;font-size:12px;text-align:center}
+.tiny-hint{color:#777;font-size:12px;text-align:center}
 
 /* Gallery Drawer */
 .drawer{
   position:fixed;right:0;top:0;height:100svh;width:min(520px,100%);
-  background:var(--card);border-left:1px solid #1f2330;display:flex;flex-direction:column;
+  background:var(--card);border-left:1px solid #ddd;display:flex;flex-direction:column;
   z-index:9000;transform:translateX(100%);transition:transform .25s ease
 }
 .drawer.open{transform:translateX(0%)}
-.drawer-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #1f2330}
+.drawer-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #ddd}
 .drawer-body{
   padding:12px;
   display:grid;
@@ -115,8 +115,8 @@ button:disabled{opacity:.5;cursor:not-allowed}
 }
 
 /* 갤러리 아이템 */
-.g-item{position:relative;aspect-ratio:2/3;overflow:visible;border-radius:12px;border:1px solid #2b3146;
-  background:#0f1320;display:flex;align-items:center;justify-content:center;}
+.g-item{position:relative;aspect-ratio:2/3;overflow:visible;border-radius:12px;border:1px solid #ccc;
+  background:#f7f7f7;display:flex;align-items:center;justify-content:center;}
 .g-item img{width:100%;height:100%;object-fit:contain;border-radius:12px;}
 .g-item button.del{position:absolute;top:4px;right:4px;background:#000a;color:#fff;border:0;border-radius:50%;
   width:24px;height:24px;cursor:pointer}
@@ -135,8 +135,8 @@ button:disabled{opacity:.5;cursor:not-allowed}
 /* 카운트다운 */
 .big-countdown {
   position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
-  font-size:min(18vw,120px); font-weight:900; color:#fff;
-  text-shadow:0 0 20px #000; z-index:10000; pointer-events:none;
+  font-size:min(18vw,120px); font-weight:900; color:#111;
+  text-shadow:0 0 20px #fff; z-index:10000; pointer-events:none;
 }
 
 /* Responsive */
@@ -156,11 +156,3 @@ button:disabled{opacity:.5;cursor:not-allowed}
   .steps{font-size:13px}
   .cam{max-height:60svh}
 }
-
-
-
-
-
-
-
-
