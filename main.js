@@ -309,9 +309,8 @@ function makeViewerUrl(publicUrl){
 
 function getQrTargets(){
   let qrDiv = document.getElementById('qr');
-  let viewerLink = document.getElementById('viewerLink');
   const box = document.getElementById('qrBox');
-  if (qrDiv && viewerLink && box){ box.hidden = false; return { qrDiv, viewerLink }; }
+  if (qrDiv && box){ box.hidden = false; return { qrDiv }; }
 
   // QR 박스가 없다면 즉석 오버레이 생성
   const overlay = document.createElement('div');
@@ -323,18 +322,14 @@ function getQrTargets(){
   title.style.cssText = 'margin-bottom:8px;font-weight:700';
   qrDiv = document.createElement('div');
   qrDiv.style.cssText = 'width:220px;height:220px;margin:0 auto 12px;';
-  viewerLink = document.createElement('a');
-  viewerLink.href = '#'; viewerLink.target = '_blank'; viewerLink.rel = 'noopener';
-  viewerLink.textContent = 'viewer 새 탭으로 열기';
-  viewerLink.style.cssText = 'display:inline-block;margin-bottom:8px;';
   const close = document.createElement('button');
   close.textContent = '닫기';
   close.style.cssText = 'display:block;margin:0 auto;border:1px solid #ddd;border-radius:8px;padding:8px 12px;background:#fff;cursor:pointer;';
   close.onclick = () => document.body.removeChild(overlay);
-  card.append(title, qrDiv, viewerLink, close);
+  card.append(title, qrDiv, close);
   overlay.appendChild(card);
   document.body.appendChild(overlay);
-  return { qrDiv, viewerLink };
+  return { qrDiv };
 }
 
 let _qrInstance = null;
@@ -346,13 +341,14 @@ function ensureQrInstance(el){
 }
 
 async function showQrWithUpload(){
-  const { qrDiv, viewerLink } = getQrTargets();
+  const { qrDiv } = getQrTargets();
   const publicUrl = await uploadFinalToCloudinary(); // 원본 그대로 업로드
   const viewerUrl = makeViewerUrl(publicUrl);        // viewer.html?img=...
   const qr = ensureQrInstance(qrDiv);
   qr.clear();
   qr.makeCode(viewerUrl);
-  viewerLink.href = viewerUrl;
+
 }
+
 
 
