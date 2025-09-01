@@ -285,8 +285,8 @@ updateFontColor();
 
 /* ===== Cloudinary 업로드 → viewer 링크 → QR ===== */
 
-const CLOUD_NAME    = 'YOUR_CLOUD_NAME';      // ← 본인 값
-const UPLOAD_PRESET = 'YOUR_UNSIGNED_PRESET'; // ← 본인 값
+const CLOUD_NAME    = 'djqkuxfki';      // ← 본인 값
+const UPLOAD_PRESET = 'fourcut_unsigned'; // ← 본인 값
 
 async function uploadFinalToCloudinary(){
   if (!finalDataUrl) throw new Error('finalDataUrl이 없습니다.');
@@ -354,4 +354,5 @@ async function showQrWithUpload(){
   qr.makeCode(viewerUrl);
   viewerLink.href = viewerUrl;
 }
+
 
