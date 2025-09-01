@@ -281,58 +281,7 @@ $("#btnFlip").onclick=async()=>{
 // 초기 적용
 updateFrame();
 updateFontColor();
-/* ==========================
-   QR & viewer 연동 (finalDataUrl 사용)
-========================== */
-(function(){
-  const qrBox = $('#qrBox');
-  const qrDiv = $('#qr');
-  const viewerLink = $('#viewerLink');
-  const MAX_QR_PAYLOAD = 3500; // 대략적 안정 한도(문자 수). 초과 시 QR 생성 경고
-  let qrInstance = null;
 
-  function ensureQr(){
-    if (!qrInstance) {
-      qrInstance = new QRCode(qrDiv, {
-        text: 'about:blank',
-        width: 200,
-        height: 200,
-        correctLevel: QRCode.CorrectLevel.M
-      });
-    }
-    return qrInstance;
-  }
-
-  // finalDataUrl(매우 김)을 URI-세이프하게 압축 → viewer.html 해시(#)에 실어 보냄
-  function buildViewerUrlFromFinal(){
-    if (!finalDataUrl) throw new Error('finalDataUrl이 없습니다.');
-    // JSON으로 한 번 감싸면 확장성↑
-    const raw = JSON.stringify({ img: finalDataUrl });
-    const packed = LZString.compressToEncodedURIComponent(raw); // URI 안전 압축
-    // 너무 길면 QR로 담기 어렵다 → 경고/우회안
-    if (packed.length > MAX_QR_PAYLOAD) return null;
-    return `viewer.html#d=${packed}`;
-  }
-
-  // 외부에서 호출: 최종 합성 완료 후 QR 만들기
-  window.showQrForFinal = function(){
-    try {
-      const url = buildViewerUrlFromFinal();
-      if (!url) {
-        alert('이미지가 QR로 담기엔 너무 큽니다. (해상도/품질을 낮추거나, 업로드 방식 사용 권장)');
-        return;
-      }
-      ensureQr();
-      qrInstance.clear();
-      qrInstance.makeCode(url);
-      viewerLink.href = url;
-      qrBox.hidden = false;
-    } catch (err) {
-      console.error(err);
-      alert('QR 생성 중 오류가 발생했습니다.');
-    }
-  };
-})();
 
 /* ===== Cloudinary 업로드 → viewer 링크 → QR ===== */
 
@@ -405,3 +354,4 @@ async function showQrWithUpload(){
   qr.makeCode(viewerUrl);
   viewerLink.href = viewerUrl;
 }
+
