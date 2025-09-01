@@ -12,12 +12,14 @@ let autoRunning=false;
 let currentFacing = "user";
 let remain = 6;
 
-// 카메라 시작
+/* ------------------------
+   카메라 제어
+-------------------------*/
 async function startCamera(){
   try{
     if(stream) stopCamera();
     stream = await navigator.mediaDevices.getUserMedia({
-      video:{ facingMode: { exact: currentFacing } }, audio:false
+      video:{ facingMode: currentFacing }, audio:false
     });
     const video=$("#video");
     video.srcObject=stream;
@@ -27,22 +29,21 @@ async function startCamera(){
     $("#btnShot").disabled=false;
   }catch(e){ 
     console.error(e);
-    alert("카메라 접근 실패 (브라우저/권한 확인)");
+    alert("카메라 접근 실패 (HTTPS 환경/브라우저 권한 확인)");
   }
 }
 function stopCamera(){ stream?.getTracks().forEach(t=>t.stop()); stream=null; }
 
-// 플래시
+/* ------------------------
+   촬영/자동촬영
+-------------------------*/
 function triggerFlash(){
   const f=$("#flash");
   f.classList.add("active");
   setTimeout(()=>f.classList.remove("active"),250);
 }
-
-// 카운트다운 표시
 function showCountdown(text){ $("#countdown").textContent=text; }
 
-// 자동 촬영 (6초 루프, 총 6장)
 async function startAutoCapture(){
   shots=[]; selected.clear(); finalDataUrl=null;
   renderThumbs(); renderPreview(); updateCounter();
@@ -74,7 +75,6 @@ async function startAutoCapture(){
   },1000);
 }
 
-// 사진 찍기
 function doCapture(){
   const video=$("#video");
   const canvas=document.createElement("canvas");
@@ -92,7 +92,9 @@ function doCapture(){
   }
 }
 
-// 썸네일
+/* ------------------------
+   썸네일/미리보기/합성
+-------------------------*/
 function renderThumbs(){
   const grid=$("#thumbGrid"); grid.innerHTML="";
   shots.forEach((src,idx)=>{
@@ -110,7 +112,6 @@ function renderThumbs(){
 }
 function updateCounter(){ $("#shotCounter").textContent=`${shots.length} / 6`; }
 
-// 미리보기
 function renderPreview(){
   const grid=$("#finalGrid"); grid.innerHTML="";
   [...selected].forEach(i=>{
@@ -121,7 +122,6 @@ function renderPreview(){
   $("#polaroidCap").textContent=$("#caption").value||" ";
 }
 
-// 4컷 합성
 async function makeFourcut(){
   if(selected.size!==4) return alert("4장을 선택하세요");
   const node=$("#fourcut");
@@ -130,21 +130,19 @@ async function makeFourcut(){
   $("#btnSave").disabled=false;
 }
 
-// 저장 (갤러리 저장 + QR 팝업)
+/* ------------------------
+   저장/갤러리
+-------------------------*/
 async function saveImage(){
   if(!finalDataUrl) return;
   const id=Date.now();
   const payload={id,createdAt:Date.now(),image:finalDataUrl};
   localStorage.setItem("photo:"+id,JSON.stringify(payload));
   await renderGallery();
-  // 저장 후: 무조건 팝업으로 QR 표시
-  await showQrPopupWithUpload();
-  // 초기화는 X 버튼에서 수행 (closeQrPopup)
+  await showQrPopupWithUpload(); // 저장 후 QR 팝업 표시
 }
 function resetSession(){
-  shots=[];
-  selected.clear();
-  finalDataUrl=null;
+  shots=[]; selected.clear(); finalDataUrl=null;
   $("#caption").value="";
   renderThumbs();
   renderPreview();
@@ -152,8 +150,6 @@ function resetSession(){
   $("#btnSave").disabled=true;
   $("#btnMake").disabled=true;
 }
-
-// 갤러리
 async function renderGallery(){
   const grid=$("#galleryGrid"); grid.innerHTML="";
   const keys=Object.keys(localStorage).filter(k=>k.startsWith("photo:"));
@@ -223,53 +219,8 @@ function updateFontColor(){
 }
 
 /* ------------------------
-   이벤트 바인딩
+   Cloudinary 업로드 + QR 팝업
 -------------------------*/
-$("#frameStyle").oninput = updateFrame;
-$("#frameColor").oninput = updateFrame;
-$("#fontColor").oninput = updateFontColor;
-
-$("#btnStart").onclick=async()=>{ await startCamera(); startAutoCapture(); };
-$("#btnShot").onclick=()=>{ 
-  triggerFlash();
-  doCapture();
-  if(autoRunning){
-    remain = 6;
-    showCountdown(remain);
-  }
-};
-$("#caption").oninput=()=>renderPreview();
-$("#btnMake").onclick=()=>makeFourcut();
-$("#btnSave").onclick=()=>saveImage();
-
-// 갤러리 열기
-$("#btnGallery").onclick=async()=>{
-  const pass = prompt("갤러리를 열기 위한 암호를 입력하세요:");
-  if(pass === "posungprogramming"){
-    await renderGallery();
-    $("#gallery").hidden=false;
-    $("#gallery").classList.add("open");
-    $("#backdrop").hidden=false;
-  } else if(pass !== null) {
-    alert("암호가 틀렸습니다.");
-  }
-};
-$("#btnCloseGallery").onclick=()=>{ $("#gallery").classList.remove("open"); setTimeout(()=>$("#gallery").hidden=true,250); $("#backdrop").hidden=true; };
-$("#btnWipeGallery").onclick=()=>{ if(confirm("모두 삭제?")){ Object.keys(localStorage).filter(k=>k.startsWith("photo:")).forEach(k=>localStorage.removeItem(k)); renderGallery(); } };
-$("#backdrop").onclick=()=>{ $("#gallery").classList.remove("open"); setTimeout(()=>$("#gallery").hidden=true,250); $("#backdrop").hidden=true; };
-$("#btnReset").onclick=()=>{ shots=[];selected.clear();finalDataUrl=null;renderThumbs();renderPreview();updateCounter(); };
-
-// 카메라 전환
-$("#btnFlip").onclick=async()=>{
-  currentFacing = (currentFacing==="user") ? "environment" : "user";
-  await startCamera();
-};
-
-// 초기 적용
-updateFrame();
-updateFontColor();
-
-/* ===== Cloudinary 업로드 → viewer 링크 ===== */
 const CLOUD_NAME    = 'djqkuxfki';
 const UPLOAD_PRESET = 'fourcut_unsigned';
 
@@ -291,48 +242,9 @@ function makeViewerUrl(publicUrl){
   return u.toString();
 }
 
-/* ===== 기존 div 표시용 QR (원본 유지) ===== */
-function getQrTargets(){
-  let qrDiv = document.getElementById('qr');
-  const box = document.getElementById('qrBox');
-  if (qrDiv && box){ box.hidden = false; return { qrDiv }; }
-
-  const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
-  const card = document.createElement('div');
-  card.style.cssText = 'background:#fff;border-radius:12px;padding:16px;text-align:center;max-width:90vw';
-  const title = document.createElement('div');
-  title.textContent = '이 QR을 스캔하세요';
-  title.style.cssText = 'margin-bottom:8px;font-weight:700';
-  let newDiv = document.createElement('div');
-  newDiv.id = 'qr';
-  newDiv.style.cssText = 'width:220px;height:220px;margin:0 auto 12px;';
-  const close = document.createElement('button');
-  close.textContent = '닫기';
-  close.style.cssText = 'display:block;margin:0 auto;border:1px solid #ddd;border-radius:8px;padding:8px 12px;background:#fff;cursor:pointer;';
-  close.onclick = () => document.body.removeChild(overlay);
-  card.append(title, newDiv, close);
-  overlay.appendChild(card);
-  document.body.appendChild(overlay);
-  return { qrDiv: newDiv };
-}
-let _qrDivInstance = null;
-function ensureQrInstance(el){
-  if (!_qrDivInstance){
-    _qrDivInstance = new QRCode(el, { text:'about:blank', width:220, height:220, correctLevel:QRCode.CorrectLevel.M });
-  }
-  return _qrDivInstance;
-}
-async function showQrWithUpload(){
-  const { qrDiv } = getQrTargets();
-  const publicUrl = await uploadFinalToCloudinary();
-  const viewerUrl = makeViewerUrl(publicUrl);
-  const qr = ensureQrInstance(qrDiv);
-  qr.clear();
-  qr.makeCode(viewerUrl);
-}
-
-/* ===== 새로 추가: 팝업(모달) 표시용 QR ===== */
+/* ------------------------
+   QR 팝업 모달
+-------------------------*/
 function loadQRCodeLib(){
   if(window.QRCode) return Promise.resolve();
   return new Promise((resolve,reject)=>{
@@ -403,7 +315,6 @@ async function openQrPopup(viewerUrl){
   popup.style.display='flex';
   window.addEventListener('resize',_qrPopupResizeHandler);
 }
-// X 버튼으로 닫을 때만 전체 초기화 (배경 클릭 닫힘 없음)
 function closeQrPopup(){
   resetSession();
   const el=document.getElementById('qrPopup');
@@ -415,4 +326,51 @@ async function showQrPopupWithUpload(){
   const viewerUrl=makeViewerUrl(publicUrl);
   await openQrPopup(viewerUrl);
 }
+
+/* ------------------------
+   이벤트 바인딩 (DOMContentLoaded 보장)
+-------------------------*/
+document.addEventListener("DOMContentLoaded", () => {
+  $("#frameStyle").oninput = updateFrame;
+  $("#frameColor").oninput = updateFrame;
+  $("#fontColor").oninput = updateFontColor;
+
+  $("#btnStart").onclick=async()=>{ await startCamera(); startAutoCapture(); };
+  $("#btnShot").onclick=()=>{ 
+    triggerFlash();
+    doCapture();
+    if(autoRunning){
+      remain = 6;
+      showCountdown(remain);
+    }
+  };
+  $("#caption").oninput=()=>renderPreview();
+  $("#btnMake").onclick=()=>makeFourcut();
+  $("#btnSave").onclick=()=>saveImage();
+
+  $("#btnGallery").onclick=async()=>{
+    const pass = prompt("갤러리를 열기 위한 암호를 입력하세요:");
+    if(pass === "posungprogramming"){
+      await renderGallery();
+      $("#gallery").hidden=false;
+      $("#gallery").classList.add("open");
+      $("#backdrop").hidden=false;
+    } else if(pass !== null) {
+      alert("암호가 틀렸습니다.");
+    }
+  };
+  $("#btnCloseGallery").onclick=()=>{ $("#gallery").classList.remove("open"); setTimeout(()=>$("#gallery").hidden=true,250); $("#backdrop").hidden=true; };
+  $("#btnWipeGallery").onclick=()=>{ if(confirm("모두 삭제?")){ Object.keys(localStorage).filter(k=>k.startsWith("photo:")).forEach(k=>localStorage.removeItem(k)); renderGallery(); } };
+  $("#backdrop").onclick=()=>{ $("#gallery").classList.remove("open"); setTimeout(()=>$("#gallery").hidden=true,250); $("#backdrop").hidden=true; };
+  $("#btnReset").onclick=()=>{ resetSession(); };
+
+  $("#btnFlip").onclick=async()=>{
+    currentFacing = (currentFacing==="user") ? "environment" : "user";
+    await startCamera();
+  };
+
+  // 초기 적용
+  updateFrame();
+  updateFontColor();
+});
 </script>
