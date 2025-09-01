@@ -182,8 +182,8 @@ function updateFontColor(){
 }
 
 // ====== Cloudinary 업로드 + QR 팝업 ======
-const CLOUD_NAME    = 'djqkuxfki';
-const UPLOAD_PRESET = 'fourcut_unsigned';
+const CLOUD_NAME    = 'djqkuxfki';        // 본인 Cloudinary 이름
+const UPLOAD_PRESET = 'fourcut_unsigned'; // 본인 업로드 preset
 
 async function uploadFinalToCloudinary(){
   if (!finalDataUrl) throw new Error('finalDataUrl이 없습니다.');
@@ -205,45 +205,22 @@ function makeViewerUrl(publicUrl){
 
 // ====== QR 팝업 모달 ======
 function computeQrPopupSize(){
-  const vwSize=Math.min(window.innerWidth*0.8,440);
-  const vhSize=window.innerHeight*0.6;
-  return Math.max(160,Math.floor(Math.min(vwSize,vhSize)));
+  return Math.max(160, Math.floor(Math.min(window.innerWidth*0.6, 240)));
 }
 function openQrPopup(viewerUrl){
-  let popup=document.getElementById('qrPopup');
-  if(!popup){
-    popup=document.createElement('div');
-    popup.id='qrPopup';
-    popup.innerHTML=`
-      <div class="popup-content" style="
-        position:relative;background:#fff;padding:20px;
-        border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.25);
-        width:min(90vw,480px);max-height:90vh;
-        display:flex;flex-direction:column;align-items:center;">
-        <span id="qrCloseBtn" style="
-          position:absolute;top:10px;right:12px;font-size:22px;
-          font-weight:700;color:#333;cursor:pointer;line-height:1">×</span>
-        <div id="qrPopupContainer" class="qr-wrap" style="width:100%;display:grid;place-items:center"></div>
-      </div>`;
-    Object.assign(popup.style,{
-      display:"flex",justifyContent:"center",alignItems:"center",
-      position:"fixed",inset:"0",background:"rgba(0,0,0,.5)",zIndex:"10000"
-    });
-    document.body.appendChild(popup);
-    $("#qrCloseBtn").onclick=closeQrPopup;
-  }
+  const popup=document.getElementById('qrPopup');
   const wrap=document.getElementById('qrPopupContainer');
-  wrap.innerHTML="";
-  new QRCode(wrap,{
+  wrap.innerHTML=""; // 기존 QR 제거
+  new QRCode(wrap,{   // ✅ QR 코드 생성
     text:viewerUrl,
     width:computeQrPopupSize(),
     height:computeQrPopupSize(),
     correctLevel:QRCode.CorrectLevel.M
   });
-  popup.style.display='flex';
+  popup.style.display='flex'; // 모달 열기
 }
 function closeQrPopup(){
-  resetSession();
+  resetSession();             // 닫으면 세션 초기화
   const el=document.getElementById('qrPopup');
   if(el) el.style.display='none';
 }
