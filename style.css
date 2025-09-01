@@ -37,7 +37,7 @@ html,body{
 
 /* Buttons */
 .ghost,.text,.primary,.accent{border:0;border-radius:10px;padding:8px 12px;font-weight:600;cursor:pointer}
-.ghost{background:#fff;color:#cfd6e7}
+.ghost{background:#23283a;color:#cfd6e7}
 .text{background:transparent;color:#cfd6e7}
 .primary{background:var(--primary);color:#fff}
 .accent{background:var(--accent);color:#0a0c0f}
@@ -156,6 +156,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
   .steps{font-size:13px}
   .cam{max-height:60svh}
 }
+
 
 
 
