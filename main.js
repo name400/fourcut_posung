@@ -264,7 +264,19 @@ $("#caption").oninput=()=>renderPreview();
 $("#btnMake").onclick=()=>makeFourcut();
 $("#btnSave").onclick=()=>saveImage();
 
-$("#btnGallery").onclick=async()=>{ await renderGallery(); $("#gallery").hidden=false; $("#gallery").classList.add("open"); $("#backdrop").hidden=false; };
+// 갤러리 열기 (암호 추가)
+$("#btnGallery").onclick=async()=>{
+  const pass = prompt("갤러리를 열기 위한 암호를 입력하세요:");
+  if(pass === "name20215"){  // 원하는 암호로 수정
+    await renderGallery();
+    $("#gallery").hidden=false;
+    $("#gallery").classList.add("open");
+    $("#backdrop").hidden=false;
+  } else if(pass !== null) {
+    alert("암호가 틀렸습니다.");
+  }
+};
+
 $("#btnCloseGallery").onclick=()=>{ $("#gallery").classList.remove("open"); setTimeout(()=>$("#gallery").hidden=true,250); $("#backdrop").hidden=true; };
 $("#btnWipeGallery").onclick=()=>{ if(confirm("모두 삭제?")){ Object.keys(localStorage).filter(k=>k.startsWith("photo:")).forEach(k=>localStorage.removeItem(k)); renderGallery(); } };
 $("#backdrop").onclick=()=>{ $("#gallery").classList.remove("open"); setTimeout(()=>$("#gallery").hidden=true,250); $("#backdrop").hidden=true; };
@@ -346,9 +358,4 @@ async function showQrWithUpload(){
   const qr = ensureQrInstance(qrDiv);
   qr.clear();
   qr.makeCode(viewerUrl);
-
 }
-
-
-
-
