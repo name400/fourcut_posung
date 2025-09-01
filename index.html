@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>보성제 | 4컷</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- 상단바 -->
+  <div class="topbar">
+    <div class="brand">
+      <img src="posung.png" class="logo" alt="logo">
+      <span>2025 보성제</span>
+    </div>
+    <div class="steps">
+      <span class="step active">1. 촬영</span>
+      <span class="sep">></span>
+      <span class="step">2. 선택</span>
+      <span class="sep">></span>
+      <span class="step">3. 합성</span>
+    </div>
+    <div class="right-actions">
+      <button id="btnStart" class="primary">촬영 시작</button>
+      <button id="btnGallery" class="ghost">갤러리</button>
+    </div>
+  </div>
+
+  <!-- 메인 -->
+  <div class="container">
+    <!-- 카메라 -->
+    <div class="panel">
+      <div class="card cam">
+        <video id="video" autoplay playsinline></video>
+        <div class="cam-overlay">
+          <div class="overlay-row top">
+            <button id="btnFlip" class="ghost">카메라 전환</button>
+            <button id="btnReset" class="ghost">리셋</button>
+          </div>
+          <div class="overlay-row bottom">
+            <span id="shotCounter" class="counter">0 / 6</span>
+            <button id="btnShot" class="primary" disabled>촬영</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 사진 선택 / 미리보기 -->
+    <div class="panel">
+      <div class="card thumbs">
+        <div id="thumbGrid" class="thumb-grid"></div>
+        <div class="hint">자동 촬영된 6장 중 4장을 선택하세요</div>
+      </div>
+
+      <div class="card preview">
+        <div id="fourcut" class="fourcut polaroid">
+          <div class="fc-header">
+            <img src="posung.png" class="fc-logo">
+            <div class="fc-title">2025 보성제</div>
+          </div>
+          <div id="finalGrid" class="grid"></div>
+          <div id="polaroidCap" class="polaroid-cap"></div>
+        </div>
+      </div>
+
+      <!-- 새로 추가: 프레임 스타일/글씨색 -->
+      <label class="cap-label">프레임 스타일</label>
+      <select id="frameStyle" class="input small">
+        <option value="polaroid">폴라로이드</option>
+        <option value="solid">단색</option>
+        <option value="gradientLight">그라데이션(밝게)</option>
+        <option value="gradientDark">그라데이션(진하게)</option>
+      </select>
+
+      <label class="cap-label">프레임 색상</label>
+      <input id="frameColor" class="input small" type="color" value="#ffffff">
+
+      <label class="cap-label">글씨 색상</label>
+      <input id="fontColor" class="input small" type="color" value="#000000">
+
+      <label class="cap-label">캡션 입력</label>
+      <input id="caption" class="input" type="text" placeholder="문구를 입력하세요">
+
+      <div class="actions">
+        <button id="btnMake" class="accent" disabled>4컷 만들기</button>
+        <button id="btnSave" class="primary" disabled>저장</button>
+      </div>
+      <!-- QR for viewer -->
+      <div id="qrBox" class="qrbox" hidden>
+        <div id="qr"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 갤러리 -->
+  <div id="gallery" class="drawer" hidden>
+    <div class="drawer-head">
+      <span>갤러리</span>
+      <div>
+        <button id="btnWipeGallery" class="text">모두 삭제</button>
+        <button id="btnCloseGallery" class="text">닫기</button>
+      </div>
+    </div>
+    <div id="galleryGrid" class="drawer-body"></div>
+  </div>
+  <div id="backdrop" class="backdrop" hidden></div>
+
+  <!-- 플래시 / 카운트다운 -->
+  <div id="flash" class="flash"></div>
+  <div id="countdown" class="big-countdown"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

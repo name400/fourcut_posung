@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>사진 보기 & 저장</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Malgun Gothic,sans-serif;margin:0;padding:24px;line-height:1.5}
+    .wrap{max-width:720px;margin:0 auto}
+    .img-box{display:flex;justify-content:center;align-items:center;min-height:50vh;border:1px dashed #ccc;border-radius:12px;overflow:hidden;background:#fafafa}
+    .img-box img{max-width:100%;height:auto;display:block}
+    .actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}
+    button, a.btn{appearance:none;border:1px solid #ddd;background:#fff;border-radius:10px;padding:10px 14px;cursor:pointer;font-weight:600;text-decoration:none;color:#111}
+    button:disabled{opacity:.6;cursor:wait}
+    .hint{color:#666;font-size:.9rem}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1 style="margin:0 0 8px">사진 보기 & 저장</h1>
+    <p class="hint">아래 사진을 확인한 뒤, [이미지 저장] 버튼을 눌러 다운로드하세요. iOS/Safari는 [새 탭에서 열기] 후 길게 눌러 저장하면 더 잘 됩니다.</p>
+
+    <div class="img-box">
+      <img id="viewImg" alt="결과 이미지" />
+    </div>
+
+    <div class="actions">
+      <button id="btnDownload">이미지 저장</button>
+      <a id="btnOpen" class="btn" href="#" target="_blank" rel="noopener">새 탭에서 열기</a>
+      <button id="btnCopyLink">페이지 링크 복사</button>
+    </div>
+
+    <p class="hint" id="msg"></p>
+  </div>
+
+  <!-- 압축 해제용 -->
+  <script>
+    function getImageDataUrlFromLocation(){
+      // 1) 해시 방식(#d=...) 우선
+      if (location.hash.startsWith('#d=')) {
+        const packed = location.hash.slice(3);
+        try {
+          const raw = LZString.decompressFromEncodedURIComponent(packed);
+          const obj = JSON.parse(raw);
+          if (obj && obj.img && typeof obj.img === 'string') return obj.img;
+        } catch {}
+      }
+      // 2) 쿼리 방식(?img=...)도 지원(호환)
+      const p = new URLSearchParams(location.search);
+      const q = p.get('img');
+      if (q) return decodeURIComponent(q);
+      return null;
+    }
+
+    const imgUrl = getImageDataUrlFromLocation();
+    const imgEl = document.getElementById('viewImg');
+    const btnDownload = document.getElementById('btnDownload');
+    const btnOpen = document.getElementById('btnOpen');
+    const btnCopy = document.getElementById('btnCopyLink');
+    const msg = document.getElementById('msg');
+
+    if (!imgUrl) {
+      msg.textContent = '이미지 데이터를 찾지 못했습니다. QR을 통해 접근했는지 확인해주세요.';
+      btnDownload.disabled = true;
+      btnCopy.disabled = true;
+    } else {
+      imgEl.src = imgUrl;         // data:image/jpeg;base64,...
+      btnOpen.href = imgUrl;      // 새 탭 열기용 (iOS 저장 대안)
+    }
+
+    // "버튼을 눌러야" 저장 시작 (자동 저장 없음)
+    btnDownload.addEventListener('click', () => {
+      if (!imgUrl) return;
+      try {
+        const a = document.createElement('a');
+        a.href = imgUrl;                    // dataURL 직접 저장
+        a.download = 'fourcut.jpg';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        msg.textContent = '다운로드가 시작되었습니다.';
+      } catch (e) {
+        msg.textContent = '브라우저 제한으로 직접 저장이 어려워요. [새 탭에서 열기] 후 저장을 시도해 주세요.';
+      }
+    });
+
+    btnCopy.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(location.href);
+        msg.textContent = '페이지 링크를 복사했어요.';
+      } catch {
+        msg.textContent = '복사 권한이 없어 복사에 실패했어요.';
+      }
+    });
+  </script>
+</body>
+</html>
