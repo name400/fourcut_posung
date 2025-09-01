@@ -144,7 +144,6 @@ async function saveImage(){
   const payload={id,createdAt:Date.now(),image:finalDataUrl};
   localStorage.setItem("photo:"+id,JSON.stringify(payload));
   await renderGallery();
-  alert("저장 완료!");
 
   await showQrWithUpload();
   
@@ -349,6 +348,7 @@ async function showQrWithUpload(){
   qr.makeCode(viewerUrl);
 
 }
+
 
 
 
