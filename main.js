@@ -38,7 +38,7 @@ function triggerFlash(){
   f.classList.add("active");
   setTimeout(()=>f.classList.remove("active"),250);
 }
-function showCountdown(text){ $("#countdown").textContent=text; }
+function updateCountdownUI(text){ $("#countdown").textContent=text; }
 
 async function startAutoCapture(){
   shots=[]; selected.clear(); finalDataUrl=null;
@@ -47,16 +47,16 @@ async function startAutoCapture(){
   autoRunning=true;
   remain=6;
   if(autoTimer){ clearInterval(autoTimer); }
-  showCountdown(remain);
+  updateCountdownUI(remain);
 
   autoTimer=setInterval(()=>{
     if(!autoRunning){
       clearInterval(autoTimer);
-      showCountdown("");
+      updateCountdownUI("");
       return;
     }
     remain--;
-    showCountdown(remain>0 ? remain : "");
+    updateCountdownUI(remain>0 ? remain : "");
     if(remain<=0){
       triggerFlash();
       doCapture();
@@ -64,7 +64,7 @@ async function startAutoCapture(){
       if(shots.length>=6){
         autoRunning=false;
         clearInterval(autoTimer);
-        showCountdown("");
+        updateCountdownUI("");
       }
     }
   },1000);
@@ -133,7 +133,7 @@ async function saveImage(){
   const payload={id,createdAt:Date.now(),image:finalDataUrl};
   localStorage.setItem("photo:"+id,JSON.stringify(payload));
   await renderGallery();
-  await showQrPopupWithUpload();
+  await showQrPopupWithUpload(); // QR 팝업 띄우기
 }
 function resetSession(){
   shots=[]; selected.clear(); finalDataUrl=null;
@@ -203,28 +203,37 @@ function makeViewerUrl(publicUrl){
   return u.toString();
 }
 
-// QR 팝업
+// ====== QR 팝업 모달 ======
 function computeQrPopupSize(){
   const vwSize=Math.min(window.innerWidth*0.8,440);
   const vhSize=window.innerHeight*0.6;
   return Math.max(160,Math.floor(Math.min(vwSize,vhSize)));
 }
-let _qrPopupCurrentText="";
 function openQrPopup(viewerUrl){
   let popup=document.getElementById('qrPopup');
   if(!popup){
     popup=document.createElement('div');
     popup.id='qrPopup';
     popup.innerHTML=`
-      <div class="popup-content">
-        <span class="close-btn" onclick="closeQrPopup()">×</span>
-        <div id="qrPopupContainer" class="qr-wrap"></div>
+      <div class="popup-content" style="
+        position:relative;background:#fff;padding:20px;
+        border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.25);
+        width:min(90vw,480px);max-height:90vh;
+        display:flex;flex-direction:column;align-items:center;">
+        <span id="qrCloseBtn" style="
+          position:absolute;top:10px;right:12px;font-size:22px;
+          font-weight:700;color:#333;cursor:pointer;line-height:1">×</span>
+        <div id="qrPopupContainer" class="qr-wrap" style="width:100%;display:grid;place-items:center"></div>
       </div>`;
+    Object.assign(popup.style,{
+      display:"flex",justifyContent:"center",alignItems:"center",
+      position:"fixed",inset:"0",background:"rgba(0,0,0,.5)",zIndex:"10000"
+    });
     document.body.appendChild(popup);
+    $("#qrCloseBtn").onclick=closeQrPopup;
   }
   const wrap=document.getElementById('qrPopupContainer');
   wrap.innerHTML="";
-  _qrPopupCurrentText=viewerUrl;
   new QRCode(wrap,{
     text:viewerUrl,
     width:computeQrPopupSize(),
@@ -251,7 +260,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
   $("#fontColor").oninput=updateFontColor;
 
   $("#btnStart").onclick=async()=>{ await startCamera(); startAutoCapture(); };
-  $("#btnShot").onclick=()=>{ triggerFlash(); doCapture(); if(autoRunning){remain=6; showCountdown(remain);} };
+  $("#btnShot").onclick=()=>{ triggerFlash(); doCapture(); if(autoRunning){remain=6; updateCountdownUI(remain);} };
   $("#caption").oninput=()=>renderPreview();
   $("#btnMake").onclick=()=>makeFourcut();
   $("#btnSave").onclick=()=>saveImage();
