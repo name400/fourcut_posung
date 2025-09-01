@@ -267,7 +267,7 @@ $("#btnSave").onclick=()=>saveImage();
 // 갤러리 열기 (암호 추가)
 $("#btnGallery").onclick=async()=>{
   const pass = prompt("갤러리를 열기 위한 암호를 입력하세요:");
-  if(pass === "name20215"){  // 원하는 암호로 수정
+  if(pass === "posungprogramming"){  // 원하는 암호로 수정
     await renderGallery();
     $("#gallery").hidden=false;
     $("#gallery").classList.add("open");
@@ -359,3 +359,4 @@ async function showQrWithUpload(){
   qr.clear();
   qr.makeCode(viewerUrl);
 }
+
