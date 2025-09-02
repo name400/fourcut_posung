@@ -187,22 +187,24 @@ function isMobile(){
 }
 
 // ---------- 합성 ----------
+// ====== 합성 ======
 async function makeFourcut() {
   if (selected.size !== 4) return alert("4장을 선택하세요");
 
   const node = $("#fourcut");
-  await prepareImagesForCapture(node);  // 이미지 안전화 추가
 
+  // ✅ scale 높이고, PNG 무손실 저장
   const canvas = await html2canvas(node, {
     backgroundColor: null,
-    useCORS: true,
-    allowTaint: false,
-    scale: isMobile() ? 1.25 : 2
+    scale: 3   // 해상도 업 (기존 2 → 3)
   });
-  const quality = isMobile() ? 0.82 : 0.92;
-  finalDataUrl = canvas.toDataURL("image/jpeg", quality);
+
+  // ✅ PNG로 저장 (JPEG → PNG)
+  finalDataUrl = canvas.toDataURL("image/png");
+
   $("#btnSave").disabled = false;
 }
+
 
 // ---------- 저장 & 갤러리 ----------
 async function saveImage() {
@@ -400,3 +402,4 @@ document.addEventListener("DOMContentLoaded", async () => {
   updateFontColor();
   toggleNextButtons();
 });
+
