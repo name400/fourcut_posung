@@ -21,6 +21,7 @@ function showPage(name) {
 async function listCameras() {
   const devices = await navigator.mediaDevices.enumerateDevices();
   const sel = $("#cameraSelect");
+  if (!sel) return;
   sel.innerHTML = "";
   devices.filter(d => d.kind === "videoinput").forEach((d, i) => {
     const opt = document.createElement("option");
@@ -43,9 +44,11 @@ async function startCamera() {
       : { video: { facingMode: currentFacing }, audio: false };
     stream = await navigator.mediaDevices.getUserMedia(constraints);
     const video = $("#video");
-    video.srcObject = stream;
-    video.onloadedmetadata = () => video.play();
-    $("#btnShot").disabled = false;
+    if (video) {
+      video.srcObject = stream;
+      video.onloadedmetadata = () => video.play();
+    }
+    if ($("#btnShot")) $("#btnShot").disabled = false;
   } catch (e) {
     alert("카메라 접근 실패: " + e.message);
   }
@@ -58,11 +61,13 @@ function stopCamera() {
 // ---------- 촬영 ----------
 function triggerFlash() {
   const f = $("#flash");
+  if (!f) return;
   f.classList.add("active");
   setTimeout(() => f.classList.remove("active"), 250);
 }
 function updateCountdownUI(t) {
-  $("#countdown").textContent = t;
+  const el = $("#countdown");
+  if (el) el.textContent = t;
 }
 
 async function startAutoCapture() {
@@ -103,6 +108,7 @@ async function startAutoCapture() {
 }
 function doCapture() {
   const video = $("#video");
+  if (!video) return;
   const canvas = document.createElement("canvas");
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
@@ -117,12 +123,14 @@ function doCapture() {
   }
 }
 function updateCounter() {
-  $("#shotCounter").textContent = `${shots.length} / 6`;
+  const el = $("#shotCounter");
+  if (el) el.textContent = `${shots.length} / 6`;
 }
 
 // ---------- 선택 & 미리보기 ----------
 function renderThumbs() {
   const grid = $("#thumbGrid");
+  if (!grid) return;
   grid.innerHTML = "";
   shots.forEach((src, idx) => {
     const d = document.createElement("div");
@@ -150,11 +158,10 @@ function renderPreview() {
   });
 }
 function toggleNextButtons() {
-  $("#toSelect").disabled = shots.length < 6;
+  if ($("#toSelect")) $("#toSelect").disabled = shots.length < 6;
   const ok4 = (selected.size === 4);
-  $("#toEdit").disabled = !ok4;
-  const btnMake = $("#btnMake");
-  if (btnMake) btnMake.disabled = !ok4;
+  if ($("#toEdit")) $("#toEdit").disabled = !ok4;
+  if ($("#btnMake")) $("#btnMake").disabled = !ok4;
 }
 
 // ---------- 이미지 안전화 ----------
@@ -181,30 +188,21 @@ async function prepareImagesForCapture(node) {
   }
 }
 
-// ---------- 환경 감지 ----------
-function isMobile(){
-  return /iphone|ipad|ipod|android|mobile/i.test(navigator.userAgent);
-}
-
 // ---------- 합성 ----------
-// ====== 합성 ======
 async function makeFourcut() {
   if (selected.size !== 4) return alert("4장을 선택하세요");
-
   const node = $("#fourcut");
-
-  // ✅ scale 높이고, PNG 무손실 저장
+  if (!node) return;
+  await prepareImagesForCapture(node);
   const canvas = await html2canvas(node, {
     backgroundColor: null,
-    scale: 3   // 해상도 업 (기존 2 → 3)
+    useCORS: true,
+    allowTaint: false,
+    scale: 2
   });
-
-  // ✅ PNG로 저장 (JPEG → PNG)
-  finalDataUrl = canvas.toDataURL("image/png");
-
-  $("#btnSave").disabled = false;
+  finalDataUrl = canvas.toDataURL("image/jpeg", 0.92);
+  if ($("#btnSave")) $("#btnSave").disabled = false;
 }
-
 
 // ---------- 저장 & 갤러리 ----------
 async function saveImage() {
@@ -224,12 +222,13 @@ function resetSession() {
   renderThumbs();
   renderPreview();
   updateCounter();
-  $("#btnSave").disabled = true;
-  $("#btnMake").disabled = true;
+  if ($("#btnSave")) $("#btnSave").disabled = true;
+  if ($("#btnMake")) $("#btnMake").disabled = true;
   toggleNextButtons();
 }
 async function renderGallery() {
   const grid = $("#galleryGrid");
+  if (!grid) return;
   grid.innerHTML = "";
   const items = Object.keys(localStorage)
     .filter(k => k.startsWith("photo:"))
@@ -254,42 +253,41 @@ async function renderGallery() {
 }
 
 // ---------- 프레임/글씨 색상 ----------
-function hexToRgb(hex){const m=hex.replace('#','');const b=parseInt(m,16);if(m.length===3){const r=(b>>8)&0xF,g=(b>>4)&0xF,l=b&0xF;return{r:r*17,g:g*17,b:l*17};}return{r:(b>>16)&255,g:(b>>8)&255,b:b&255};}
-function rgbToHex({r,g,b}){const h=n=>n.toString(16).padStart(2,'0');return`#${h(r)}${h(g)}${h(b)}`;}
-function mix(a,b,t){a=hexToRgb(a);b=hexToRgb(b);return rgbToHex({r:Math.round(a.r+(b.r-a.r)*t),g:Math.round(a.g+(b.g-a.g)*t),b:Math.round(a.b+(b.b-a.b)*t)});}
 function updateFrame(){
-  const s = $("#frameStyle").value,
-        c = $("#frameColor").value,
+  const s = $("#frameStyle")?.value,
+        c = $("#frameColor")?.value,
         f = $("#fourcut");
+  if (!f) return;
   if (s === "polaroid"){ f.className = "fourcut polaroid"; f.style.background = c; }
   else if (s === "solid"){ f.className = "fourcut solid"; f.style.background = c; }
-  else if (s === "gradientLight"){ f.className="fourcut gradient"; f.style.background=`linear-gradient(135deg, ${c} 0%, ${mix(c,"#fff",0.7)} 100%)`; }
-  else { f.className="fourcut gradient"; f.style.background=`linear-gradient(135deg, ${c} 0%, ${mix(c,"#000",0.5)} 100%)`; }
+  else if (s === "gradientLight"){ f.className="fourcut gradient"; f.style.background=`linear-gradient(135deg, ${c} 0%, #fff 100%)`; }
+  else { f.className="fourcut gradient"; f.style.background=`linear-gradient(135deg, ${c} 0%, #000 100%)`; }
 }
 function updateFontColor(){
-  const c = $("#fontColor").value;
-  $(".fc-title").style.color = c;
+  const c = $("#fontColor")?.value;
+  const el = $(".fc-title");
+  if (el) el.style.color = c;
 }
 
 // ---------- Cloudinary 업로드 + QR ----------
 const CLOUD_NAME = 'djqkuxfki', UPLOAD_PRESET = 'fourcut_unsigned';
 
 function setQrState({loading=false, error=""} = {}) {
-  const l = $("#qrLoading"), e = $("#qrError");
-  if (l) l.style.display = loading ? "block" : "none";
-  if (e) {
-    e.style.display = error ? "block" : "none";
-    e.textContent = error || "";
+  if ($("#qrLoading")) $("#qrLoading").style.display = loading ? "block" : "none";
+  if ($("#qrError")) {
+    $("#qrError").style.display = error ? "block" : "none";
+    $("#qrError").textContent = error || "";
   }
 }
 function computeQrPopupSize(){ return Math.max(160, Math.floor(Math.min(window.innerWidth * 0.6, 260))); }
 function openQrPopup(url){
   const p=$("#qrPopup"), w=$("#qrPopupContainer");
+  if (!p||!w) return;
   w.innerHTML="";
   new QRCode(w,{text:url,width:computeQrPopupSize(),height:computeQrPopupSize(),correctLevel:QRCode.CorrectLevel.M});
   p.style.display='flex';
 }
-function closeQrPopup(){ resetSession(); $("#qrPopup").style.display='none'; showPage('camera'); }
+function closeQrPopup(){ resetSession(); if($("#qrPopup")) $("#qrPopup").style.display='none'; showPage('camera'); }
 
 async function uploadFinalToCloudinary(){
   const blob = await (await fetch(finalDataUrl)).blob();
@@ -299,27 +297,18 @@ async function uploadFinalToCloudinary(){
   const form = new FormData();
   form.append('file', blob);
   form.append('upload_preset', UPLOAD_PRESET);
-
   const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
-    method:'POST',
-    body: form,
-    mode: 'cors',
-    credentials: 'omit',
-    cache: 'no-store'
+    method:'POST', body: form, mode: 'cors', credentials: 'omit', cache: 'no-store'
   });
-  if (!res.ok) {
-    const txt = await res.text().catch(()=> "");
-    throw new Error(`업로드 실패(${res.status}). ${txt?.slice(0,120)}`);
-  }
+  if (!res.ok) throw new Error("업로드 실패");
   const data = await res.json();
-  if (!data.secure_url) throw new Error("업로드 응답에 secure_url이 없습니다.");
+  if (!data.secure_url) throw new Error("업로드 응답 오류");
   return data.secure_url;
 }
 async function showQrPopupWithUpload(){
   setQrState({loading:true, error:""});
-  $("#qrPopup").style.display='flex';
-  $("#qrPopupContainer").innerHTML = "";
-
+  if($("#qrPopup")) $("#qrPopup").style.display='flex';
+  if($("#qrPopupContainer")) $("#qrPopupContainer").innerHTML = "";
   try{
     const url = await uploadFinalToCloudinary();
     setQrState({loading:false});
@@ -328,12 +317,14 @@ async function showQrPopupWithUpload(){
     console.error(err);
     setQrState({loading:false, error: "QR 생성 실패: " + err.message});
     const w = $("#qrPopupContainer");
-    const retry = document.createElement("button");
-    retry.textContent = "다시 시도";
-    retry.className = "ghost";
-    retry.onclick = () => { setQrState({loading:true, error:""}); showQrPopupWithUpload(); };
-    w.innerHTML = "";
-    w.appendChild(retry);
+    if (w) {
+      const retry = document.createElement("button");
+      retry.textContent = "다시 시도";
+      retry.className = "ghost";
+      retry.onclick = () => { setQrState({loading:true, error:""}); showQrPopupWithUpload(); };
+      w.innerHTML = "";
+      w.appendChild(retry);
+    }
   }
 }
 function makeViewerUrl(u){
@@ -346,60 +337,53 @@ function makeViewerUrl(u){
 document.addEventListener("DOMContentLoaded", async () => {
   await listCameras();
 
-  // 페이지 이동
-  $("#toSelect").onclick = () => showPage("select");
-  $("#toEdit").onclick = () => { renderPreview(); showPage("edit"); };
-  $("#backToCamera").onclick = () => showPage("camera");
-  $("#backToSelect").onclick = () => showPage("select");
+  if($("#toSelect")) $("#toSelect").onclick = () => showPage("select");
+  if($("#toEdit")) $("#toEdit").onclick = () => { renderPreview(); showPage("edit"); };
+  if($("#backToCamera")) $("#backToCamera").onclick = () => showPage("camera");
+  if($("#backToSelect")) $("#backToSelect").onclick = () => showPage("select");
 
-  // 카메라
-  $("#cameraSelect").onchange = () => { currentDeviceId = $("#cameraSelect").value; };
-  $("#btnStart").onclick = async () => { await startCamera(); startAutoCapture(); };
-  $("#btnShot").onclick  = () => { triggerFlash(); doCapture(); if (autoRunning){ remain = 6; updateCountdownUI(remain); } };
-  $("#btnReset").onclick = () => resetSession();
-  $("#btnFlip").onclick  = async () => {
+  if($("#cameraSelect")) $("#cameraSelect").onchange = () => { currentDeviceId = $("#cameraSelect").value; };
+  if($("#btnStart")) $("#btnStart").onclick = async () => { await startCamera(); startAutoCapture(); };
+  if($("#btnShot")) $("#btnShot").onclick  = () => { triggerFlash(); doCapture(); if (autoRunning){ remain = 6; updateCountdownUI(remain); } };
+  if($("#btnReset")) $("#btnReset").onclick = () => resetSession();
+  if($("#btnFlip")) $("#btnFlip").onclick  = async () => {
     currentFacing = (currentFacing === "user") ? "environment" : "user";
     currentDeviceId = null;
     await startCamera();
   };
 
-  // 편집/저장
-  $("#frameStyle").oninput = updateFrame;
-  $("#frameColor").oninput = updateFrame;
-  $("#fontColor").oninput  = updateFontColor;
-  $("#btnMake").onclick    = makeFourcut;
-  $("#btnSave").onclick    = saveImage;
+  if($("#frameStyle")) $("#frameStyle").oninput = updateFrame;
+  if($("#frameColor")) $("#frameColor").oninput = updateFrame;
+  if($("#fontColor")) $("#fontColor").oninput  = updateFontColor;
+  if($("#btnMake")) $("#btnMake").onclick    = makeFourcut;
+  if($("#btnSave")) $("#btnSave").onclick    = saveImage;
 
-  // 갤러리
-  $("#btnGallery").onclick = async () => {
+  if($("#btnGallery")) $("#btnGallery").onclick = async () => {
     const pass = prompt("갤러리 암호 입력:");
     if (pass === "posungprogramming") {
       await renderGallery();
-      $("#gallery").hidden = false;
-      $("#gallery").classList.add("open");
-      $("#backdrop").hidden = false;
+      if($("#gallery")) { $("#gallery").hidden = false; $("#gallery").classList.add("open"); }
+      if($("#backdrop")) $("#backdrop").hidden = false;
     } else if (pass !== null) alert("암호가 틀렸습니다.");
   };
-  $("#btnCloseGallery").onclick = () => {
-    $("#gallery").classList.remove("open");
-    setTimeout(() => $("#gallery").hidden = true, 250);
-    $("#backdrop").hidden = true;
+  if($("#btnCloseGallery")) $("#btnCloseGallery").onclick = () => {
+    if($("#gallery")) $("#gallery").classList.remove("open");
+    setTimeout(() => { if($("#gallery")) $("#gallery").hidden = true; }, 250);
+    if($("#backdrop")) $("#backdrop").hidden = true;
   };
-  $("#btnWipeGallery").onclick = () => {
+  if($("#btnWipeGallery")) $("#btnWipeGallery").onclick = () => {
     if (confirm("모두 삭제?")) {
       Object.keys(localStorage).filter(k => k.startsWith("photo:")).forEach(k => localStorage.removeItem(k));
       renderGallery();
     }
   };
-  $("#backdrop").onclick = () => {
-    $("#gallery").classList.remove("open");
-    setTimeout(() => $("#gallery").hidden = true, 250);
-    $("#backdrop").hidden = true;
+  if($("#backdrop")) $("#backdrop").onclick = () => {
+    if($("#gallery")) $("#gallery").classList.remove("open");
+    setTimeout(() => { if($("#gallery")) $("#gallery").hidden = true; }, 250);
+    if($("#backdrop")) $("#backdrop").hidden = true;
   };
 
-  // 초기 상태
   updateFrame();
   updateFontColor();
   toggleNextButtons();
 });
-
