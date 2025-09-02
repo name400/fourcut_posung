@@ -123,7 +123,13 @@ function makeViewerUrl(u){ const v=new URL('viewer.html',location.href); v.searc
 function computeQrPopupSize(){ return Math.max(160,Math.floor(Math.min(window.innerWidth*0.6,240))); }
 function openQrPopup(url){ const p=$("#qrPopup"),w=$("#qrPopupContainer"); w.innerHTML=""; new QRCode(w,{text:url,width:computeQrPopupSize(),height:computeQrPopupSize(),correctLevel:QRCode.CorrectLevel.M}); p.style.display='flex'; }
 function closeQrPopup(){ resetSession(); $("#qrPopup").style.display='none'; }
-async function showQrPopupWithUpload(){ const u=await uploadFinalToCloudinary(); openQrPopup(makeViewerUrl(u)); }
+async function showQrPopupWithUpload() { 
+  if (!finalDataUrl) return;
+  
+  const u=await uploadFinalToCloudinary(); 
+  openQrPopup(makeViewerUrl(u));
+  
+}
 
 // ====== 이벤트 ======
 document.addEventListener("DOMContentLoaded", async ()=>{
@@ -141,3 +147,4 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   $("#btnFlip").onclick=async()=>{ currentFacing=(currentFacing==="user")?"environment":"user"; currentDeviceId=null; await startCamera(); };
   updateFrame(); updateFontColor();
 });
+
