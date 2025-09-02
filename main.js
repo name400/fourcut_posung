@@ -121,7 +121,20 @@ const CLOUD_NAME='djqkuxfki', UPLOAD_PRESET='fourcut_unsigned';
 async function uploadFinalToCloudinary(){ const blob=await(await fetch(finalDataUrl)).blob(); const form=new FormData(); form.append('file',blob); form.append('upload_preset',UPLOAD_PRESET); const res=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,{method:'POST',body:form}); const data=await res.json(); return data.secure_url; }
 function makeViewerUrl(u){ const v=new URL('viewer.html',location.href); v.searchParams.set('img',u); return v.toString(); }
 function computeQrPopupSize(){ return Math.max(160,Math.floor(Math.min(window.innerWidth*0.6,240))); }
-function openQrPopup(url){ const p=$("#qrPopup"),w=$("#qrPopupContainer"); w.innerHTML=""; new QRCode(w,{text:url,width:computeQrPopupSize(),height:computeQrPopupSize(),correctLevel:QRCode.CorrectLevel.M}); p.style.display='flex'; }
+function openQrPopup(url) {
+  // ✅ finalDataUrl이 없으면 새로고침 시 팝업 차단
+  if (!finalDataUrl) return;
+
+  const p = $("#qrPopup"), w = $("#qrPopupContainer");
+  w.innerHTML = "";
+  new QRCode(w, {
+    text: url,
+    width: computeQrPopupSize(),
+    height: computeQrPopupSize(),
+    correctLevel: QRCode.CorrectLevel.M
+  });
+  p.style.display = 'flex';
+}
 function closeQrPopup(){ resetSession(); $("#qrPopup").style.display='none'; }
 async function showQrPopupWithUpload() { 
   if (!finalDataUrl) return;
@@ -147,4 +160,5 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   $("#btnFlip").onclick=async()=>{ currentFacing=(currentFacing==="user")?"environment":"user"; currentDeviceId=null; await startCamera(); };
   updateFrame(); updateFontColor();
 });
+
 
