@@ -120,3 +120,36 @@ button:disabled{opacity:.5;cursor:not-allowed}
   .thumbs .thumb-grid{grid-template-columns:repeat(2,1fr)}
   .cam{max-height:60svh}
 }
+/* === 보성고 로고 + 2025보성제 하단 배치 === */
+
+/* fourcut 카드 내부에 절대 위치로 고정 */
+.fourcut { position: relative; } /* 이미 있지만, 안전하게 한 번 더 명시 */
+
+.fc-header{
+  position: absolute;
+  left: 50%;
+  bottom: 12px;                /* 하단에서 12px 띄우기 */
+  transform: translateX(-50%); /* 가로 가운데 정렬 */
+  margin: 0;                   /* 기존 margin 제거 */
+  width: calc(100% - 32px);    /* 좌우 패딩 고려 */
+  justify-content: center;     /* 가운데 정렬 유지 */
+  z-index: 2;                  /* 겹침 방지 (필요시) */
+}
+
+/* 하단 영역이 가려지지 않도록 패딩 늘리기 (폴라로이드 테마일 때) */
+.fourcut.polaroid{
+  padding-bottom: 72px;        /* 기존 42px → 72px 로 증가 */
+}
+
+/* 다른 테마(예: solid, gradient)도 쓰신다면 필요시 패딩 보강 */
+.fourcut.solid,
+.fourcut.gradient{
+  padding-bottom: 56px;        /* 상황 봐서 48~72px 사이로 조정 가능 */
+}
+
+/* 반응형(모바일)에서 하단 여유 조금 더 주기 */
+@media (max-width: 767px){
+  .fc-header{ bottom: 10px; }
+  .fourcut.polaroid{ padding-bottom: 80px; }
+}
+
