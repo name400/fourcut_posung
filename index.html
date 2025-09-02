@@ -1,132 +1,124 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>보성제 | 4컷</title>
-  <link rel="stylesheet" href="style.css">
-
-  <!-- ✅ QR 팝업 스타일 -->
+  <link rel="stylesheet" href="style.css" />
+  <!-- QR 팝업 인라인 -->
   <style>
-    #qrPopup {
-      display:none;
-      position:fixed;
-      inset:0;
-      background:rgba(0,0,0,.6);
-      z-index:10000;
-      display:flex;
-      justify-content:center;
-      align-items:center;
-    }
-    #qrPopup .popup-content {
-      position:relative;
-      background:#fff;
-      padding:24px;
-      border-radius:16px;
-      box-shadow:0 10px 30px rgba(0,0,0,.3);
-      width:min(90vw,400px);
-      text-align:center;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-    }
-    #qrPopup .popup-title {
-      font-size:18px;
-      font-weight:700;
-      margin-bottom:12px;
-    }
-    #qrPopup .close-btn {
-      position:absolute;
-      top:8px; right:12px;
-      font-size:22px;
-      font-weight:700;
-      cursor:pointer;
-    }
-    #qrPopup .close-btn:hover { color:#e00; }
-    #qrPopup canvas {
-      width:100%!important;
-      height:auto!important;
-      max-width:240px!important;
-    }
+    #qrPopup{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;display:flex;justify-content:center;align-items:center}
+    #qrPopup .popup-content{position:relative;background:#fff;padding:24px;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.3);width:min(90vw,420px);text-align:center;display:flex;flex-direction:column;align-items:center}
+    #qrPopup .popup-title{font-size:18px;font-weight:700;margin-bottom:12px}
+    #qrPopup .close-btn{position:absolute;top:8px;right:12px;font-size:22px;font-weight:700;cursor:pointer}
+    #qrPopup .close-btn:hover{color:#e00}
+    #qrPopup canvas{width:100%!important;height:auto!important;max-width:260px!important}
   </style>
 </head>
 <body>
   <!-- 상단바 -->
   <div class="topbar">
     <div class="brand">
-      <img src="posung.png" class="logo" alt="logo">
+      <img src="posung.png" class="logo top-logo" alt="logo" crossorigin="anonymous" />
       <span>2025 보성제</span>
     </div>
-    <div class="steps">
-      <span class="step active">1. 촬영</span>
+
+    <div class="steps" id="steps">
+      <span class="step" data-step="camera">1. 촬영</span>
       <span class="sep">></span>
-      <span class="step">2. 선택</span>
+      <span class="step" data-step="select">2. 선택</span>
       <span class="sep">></span>
-      <span class="step">3. 합성</span>
+      <span class="step" data-step="edit">3. 꾸미기/내보내기</span>
     </div>
+
     <div class="right-actions">
       <select id="cameraSelect" class="input small"></select>
-      <button id="btnStart" class="primary">촬영 시작</button>
       <button id="btnGallery" class="ghost">갤러리</button>
     </div>
   </div>
 
-  <!-- 메인 -->
-  <div class="container">
-    <!-- 카메라 -->
-    <div class="panel">
-      <div class="card cam">
-        <video id="video" autoplay playsinline></video>
-        <div class="cam-overlay">
-          <div class="overlay-row top">
-            <button id="btnFlip" class="ghost">카메라 전환</button>
-            <button id="btnReset" class="ghost">리셋</button>
+  <main class="pages">
+    <!-- 📸 1단계: 촬영 -->
+    <section id="pageCamera" class="page active" aria-label="촬영 단계">
+      <div class="panel">
+        <div class="card cam">
+          <video id="video" autoplay playsinline></video>
+
+          <div class="cam-overlay">
+            <div class="overlay-row top">
+              <button id="btnFlip" class="ghost">카메라 전환</button>
+              <button id="btnReset" class="ghost">리셋</button>
+            </div>
+
+            <div class="overlay-row bottom">
+              <span id="shotCounter" class="counter">0 / 6</span>
+              <div class="cam-actions">
+                <button id="btnStart" class="primary">촬영 시작</button>
+                <button id="btnShot" class="ghost" disabled>수동 촬영</button>
+              </div>
+            </div>
           </div>
-          <div class="overlay-row bottom">
-            <span id="shotCounter" class="counter">0 / 6</span>
-            <button id="btnShot" class="primary" disabled>촬영</button>
+        </div>
+
+        <div class="actions center">
+          <button id="toSelect" class="accent" disabled>다음 → 선택</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 🖼️ 2단계: 선택 -->
+    <section id="pageSelect" class="page" aria-label="선택 단계">
+      <div class="panel">
+        <div class="card thumbs">
+          <div id="thumbGrid" class="thumb-grid"></div>
+          <div class="hint">자동/수동 촬영 6장 중 <b>4장</b>을 선택하세요.</div>
+        </div>
+
+        <div class="actions between">
+          <button class="ghost" id="backToCamera">← 이전(촬영)</button>
+          <button id="toEdit" class="accent" disabled>다음 → 꾸미기</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 🎨 3단계: 꾸미기/내보내기 -->
+    <section id="pageEdit" class="page" aria-label="편집 단계">
+      <div class="panel">
+        <div class="card preview">
+          <div id="fourcut" class="fourcut polaroid">
+            <div class="fc-header">
+              <!-- 캡처 대상 → dataURL 인라인 처리 예정 -->
+              <img src="posung.png" class="fc-logo" alt="logo" crossorigin="anonymous" />
+              <div class="fc-title">2025 보성제</div>
+            </div>
+            <div id="finalGrid" class="grid"></div>
+          </div>
+        </div>
+
+        <label class="cap-label">프레임 스타일</label>
+        <select id="frameStyle" class="input small">
+          <option value="polaroid">폴라로이드</option>
+          <option value="solid">단색</option>
+          <option value="gradientLight">그라데이션(밝게)</option>
+          <option value="gradientDark">그라데이션(진하게)</option>
+        </select>
+
+        <label class="cap-label">프레임 색상</label>
+        <input id="frameColor" class="input small" type="color" value="#ffffff" />
+
+        <label class="cap-label">글씨 색상</label>
+        <input id="fontColor" class="input small" type="color" value="#000000" />
+
+        <div class="actions between">
+          <button class="ghost" id="backToSelect">← 이전(선택)</button>
+          <div class="right">
+            <button id="btnMake" class="accent" disabled>4컷 만들기</button>
+            <button id="btnSave" class="primary" disabled>저장(QR)</button>
           </div>
         </div>
       </div>
-    </div>
-
-    <!-- 사진 선택 / 미리보기 -->
-    <div class="panel">
-      <div class="card thumbs">
-        <div id="thumbGrid" class="thumb-grid"></div>
-        <div class="hint">자동 촬영된 6장 중 4장을 선택하세요</div>
-      </div>
-
-      <div class="card preview">
-        <div id="fourcut" class="fourcut polaroid">
-          <div class="fc-header">
-            <img src="posung.png" class="fc-logo">
-            <div class="fc-title">2025 보성제</div>
-          </div>
-          <div id="finalGrid" class="grid"></div>
-        </div>
-      </div>
-
-      <!-- 프레임 / 색상 -->
-      <label class="cap-label">프레임 스타일</label>
-      <select id="frameStyle" class="input small">
-        <option value="solid">단색</option>
-        <option value="gradientLight">그라데이션(밝게)</option>
-        <option value="gradientDark">그라데이션(진하게)</option>
-      </select>
-
-      <label class="cap-label">프레임 색상</label>
-      <input id="frameColor" class="input small" type="color" value="#ffffff">
-
-      <label class="cap-label">글씨 색상</label>
-      <input id="fontColor" class="input small" type="color" value="#000000">
-
-      <div class="actions">
-        <button id="btnMake" class="accent" disabled>4컷 만들기</button>
-        <button id="btnSave" class="primary" disabled>저장</button>
-      </div>
-    </div>
-  </div>
+    </section>
+  </main>
 
   <!-- 갤러리 -->
   <div id="gallery" class="drawer" hidden>
@@ -141,16 +133,18 @@
   </div>
   <div id="backdrop" class="backdrop" hidden></div>
 
-  <!-- 플래시 / 카운트다운 -->
+  <!-- 플래시/카운트다운 -->
   <div id="flash" class="flash"></div>
   <div id="countdown" class="big-countdown"></div>
 
-  <!-- ✅ QR 팝업 구조 -->
+  <!-- QR 팝업 -->
   <div id="qrPopup">
     <div class="popup-content">
       <span class="close-btn" onclick="closeQrPopup()">×</span>
       <div class="popup-title">📲 저장 완료! QR을 스캔하세요</div>
       <div id="qrPopupContainer"></div>
+      <div id="qrLoading" style="margin-top:8px;color:#666;display:none">업로드 중...</div>
+      <div id="qrError" style="margin-top:8px;color:#e00;display:none"></div>
     </div>
   </div>
 
@@ -160,4 +154,3 @@
   <script src="main.js"></script>
 </body>
 </html>
-
