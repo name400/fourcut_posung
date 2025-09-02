@@ -87,6 +87,7 @@
         <div class="card preview">
           <div id="fourcut" class="fourcut polaroid">
             <div class="fc-header">
+              <!-- 캡처 대상 → dataURL 인라인 처리 예정 -->
               <img src="posung.png" class="fc-logo" alt="logo" crossorigin="anonymous" />
               <div class="fc-title">2025 보성제</div>
             </div>
@@ -118,6 +119,23 @@
       </div>
     </section>
   </main>
+
+  <!-- 갤러리 -->
+  <div id="gallery" class="drawer" hidden>
+    <div class="drawer-head">
+      <span>갤러리</span>
+      <div>
+        <button id="btnWipeGallery" class="text">모두 삭제</button>
+        <button id="btnCloseGallery" class="text">닫기</button>
+      </div>
+    </div>
+    <div id="galleryGrid" class="drawer-body"></div>
+  </div>
+  <div id="backdrop" class="backdrop" hidden></div>
+
+  <!-- 플래시/카운트다운 -->
+  <div id="flash" class="flash"></div>
+  <div id="countdown" class="big-countdown"></div>
 
   <!-- QR 팝업 -->
   <div id="qrPopup">
