@@ -157,24 +157,28 @@ function toggleNextButtons() {
   if (btnMake) btnMake.disabled = !ok4;
 }
 
-// ---------- 로고 안전화(dataURL 인라인) ----------
+// ---------- 이미지 안전화 ----------
 async function inlineImageToDataURL(imgEl) {
   if (!imgEl || imgEl.src.startsWith("data:")) return;
   try {
     const res = await fetch(imgEl.src, { mode: "cors" });
     const blob = await res.blob();
     const reader = new FileReader();
-    const dataURL = await new Promise(r => { reader.onload = () => r(reader.result); reader.readAsDataURL(blob); });
+    const dataURL = await new Promise((resolve, reject) => {
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
     imgEl.src = dataURL;
   } catch {
-    // 실패 시 캡처에서 제외(taint 회피)
     imgEl.setAttribute("data-html2canvas-ignore", "true");
   }
 }
-async function prepareLogosForCapture() {
-  await inlineImageToDataURL($(".fc-logo"));
-  // 상단 로고는 프레임 캡처에 포함되지 않지만, 필요하면 아래도 가능
-  // await inlineImageToDataURL($(".top-logo"));
+async function prepareImagesForCapture(node) {
+  const imgs = node.querySelectorAll("img");
+  for (const img of imgs) {
+    await inlineImageToDataURL(img);
+  }
 }
 
 // ---------- 환경 감지 ----------
@@ -186,15 +190,14 @@ function isMobile(){
 async function makeFourcut() {
   if (selected.size !== 4) return alert("4장을 선택하세요");
 
-  // 캔버스 taint 방지
-  await prepareLogosForCapture();
-
   const node = $("#fourcut");
+  await prepareImagesForCapture(node);  // 이미지 안전화 추가
+
   const canvas = await html2canvas(node, {
     backgroundColor: null,
     useCORS: true,
     allowTaint: false,
-    scale: isMobile() ? 1.25 : 2   // 모바일 용량 최적화
+    scale: isMobile() ? 1.25 : 2
   });
   const quality = isMobile() ? 0.82 : 0.92;
   finalDataUrl = canvas.toDataURL("image/jpeg", quality);
@@ -311,7 +314,6 @@ async function uploadFinalToCloudinary(){
   return data.secure_url;
 }
 async function showQrPopupWithUpload(){
-  // 로딩 표시 + 팝업 먼저 열기(모바일에서 팝업 차단 이슈 회피)
   setQrState({loading:true, error:""});
   $("#qrPopup").style.display='flex';
   $("#qrPopupContainer").innerHTML = "";
