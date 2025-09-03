@@ -20,7 +20,7 @@ function showPage(name) {
 // ---------- 카메라 ----------
 async function listCameras() {
   const devices = await navigator.mediaDevices.enumerateDevices();
-  const sel = $("#cameraSelect");
+
   sel.innerHTML = "";
   devices.filter(d => d.kind === "videoinput").forEach((d, i) => {
     const opt = document.createElement("option");
@@ -393,4 +393,5 @@ document.addEventListener("DOMContentLoaded", async () => {
   updateFontColor();
   toggleNextButtons();
 });
+
 
