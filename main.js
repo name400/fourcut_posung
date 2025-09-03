@@ -393,8 +393,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     $("#backdrop").hidden = true;
   };
 
+  // ✅ 새로 추가
+  $("#frameDesign")?.addEventListener("input", (e) => applyFrameDesign(e.target.value));
   // 초기 상태
   updateFrame();
   updateFontColor();
   toggleNextButtons();
 });
+
+// ✅ 새로 추가
+function applyFrameDesign(key){
+  const node = $("#fourcut");
+  // 기존 className 유지 + 새 디자인 클래스만 덧붙임
+  node.classList.remove("frame1","frame2","frame3");
+  if (key) node.classList.add(key);
+}
