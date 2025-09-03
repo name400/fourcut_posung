@@ -18,14 +18,18 @@ const PAGES = {
   edit:    "#pageEdit"
 };
 function showPage(name) {
-  Object.values(PAGES).forEach(sel => $(sel)?.classList.remove("active"));
-  $(PAGES[name])?.classList.add("active");
+  // 1) 모든 page에서 active 제거 (누락 방지)
+  document.querySelectorAll(".page").forEach(el => el.classList.remove("active"));
+  // 2) 목표 페이지만 활성화
+  const target = $(PAGES[name]);
+  if (target) target.classList.add("active");
 
-  // 스텝바 노출 제어 (촬영/선택/편집에서만 표시)
+  // 3) 스텝바 노출 제어 (촬영/선택/편집에서만 표시)
   const steps = $(".steps");
-  const visible = (name === "camera" || name === "select" || name === "edit");
+  const visible = ["camera","select","edit"].includes(name);
   if (steps) steps.style.display = visible ? "flex" : "none";
 
+  // 4) 스텝 강조
   $$(".step").forEach(s => s.classList.toggle("active", s.dataset.step === name));
 }
 
@@ -343,7 +347,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 이용방법 → 촬영
   $("#btnToCamera").onclick = () => showPage("camera");
 
-  // 페이지 이동 (기존 단계)
+  // 기존 단계 이동
   $("#toSelect").onclick = () => showPage("select");
   $("#toEdit").onclick = () => { renderPreview(); showPage("edit"); };
   $("#backToCamera").onclick = () => showPage("camera");
@@ -396,4 +400,3 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 초기 상태
   toggleNextButtons();
 });
-
