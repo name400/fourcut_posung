@@ -4,11 +4,13 @@
   --bg:#ffffff; --panel:#f7f7f7; --card:#fdfdfd;
   --accent:#21dea7; --primary:#ff4c60;
   --text:#111; --muted:#555; --ring:#21dea780;
-  --cam-zoom: 1.28;
 
   --polaroid-bg:#ffffff;
   --fc-min:280px; --fc-base:420px; --fc-max:560px;
   --top-ui-space:220px;
+
+  /* ✅ 카메라 확대 배율 (광각 보정) */
+  --cam-zoom: 1.28;
 }
 
 *{box-sizing:border-box}
@@ -49,9 +51,17 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .card{background:var(--card);border:1px solid #ddd;border-radius:16px;padding:12px}
 
 /* Camera */
-.cam{position:relative;overflow:hidden;aspect-ratio:3/4;display:flex;align-items:center;justify-content:center;max-height:70svh}
-#video{width:100%;height:100%;object-fit:cover;border-radius:12px;background:#f0f0f0}
-#video.mirror{transform:scaleX(-1)}
+.cam{
+  position:relative;overflow:hidden;aspect-ratio:3/4;
+  display:flex;align-items:center;justify-content:center;max-height:70svh
+}
+/* ✅ 카메라 카드 가로 가운데 + 폭 제한 */
+.card.cam{ margin-inline:auto; width:min(92vw, 640px); }
+
+/* ✅ 광각 보정: 중앙부 확대 */
+#video{width:100%;height:100%;object-fit:cover;border-radius:12px;background:#f0f0f0;
+  transform:scale(var(--cam-zoom));transform-origin:50% 50%}
+#video.mirror{transform:scaleX(-1) scale(var(--cam-zoom))}
 .cam-overlay{position:absolute;inset:12px;display:flex;flex-direction:column;gap:10px;pointer-events:none}
 .cam-overlay .overlay-row{display:flex;justify-content:space-between;gap:10px;pointer-events:auto}
 .cam-overlay .overlay-row.bottom{margin-top:auto}
@@ -121,210 +131,125 @@ button:disabled{opacity:.5;cursor:not-allowed}
   .thumbs .thumb-grid{grid-template-columns:repeat(2,1fr)}
   .cam{max-height:60svh}
 }
-/* === 보성고 로고 + 2025보성제 하단 배치 === */
 
-/* fourcut 카드 내부에 절대 위치로 고정 */
-.fourcut { position: relative; } /* 이미 있지만, 안전하게 한 번 더 명시 */
+/* === 보성고 로고 + 2025보성제 하단 배치 === */
+.fourcut { position: relative; } /* 안전 */
 
 .fc-header{
   position: absolute;
   left: 50%;
-  bottom: 12px;                /* 하단에서 12px 띄우기 */
-  transform: translateX(-50%); /* 가로 가운데 정렬 */
-  margin: 0;                   /* 기존 margin 제거 */
-  width: calc(100% - 32px);    /* 좌우 패딩 고려 */
-  justify-content: center;     /* 가운데 정렬 유지 */
-  z-index: 2;                  /* 겹침 방지 (필요시) */
+  bottom: 12px;
+  transform: translateX(-50%);
+  margin: 0;
+  width: calc(100% - 32px);
+  justify-content: center;
+  z-index: 2;
 }
 
-/* 하단 영역이 가려지지 않도록 패딩 늘리기 (폴라로이드 테마일 때) */
-.fourcut.polaroid{
-  padding-bottom: 72px;        /* 기존 42px → 72px 로 증가 */
-}
-
-/* 다른 테마(예: solid, gradient)도 쓰신다면 필요시 패딩 보강 */
+.fourcut.polaroid{ padding-bottom: 72px; }
 .fourcut.solid,
-.fourcut.gradient{
-  padding-bottom: 56px;        /* 상황 봐서 48~72px 사이로 조정 가능 */
-}
+.fourcut.gradient{ padding-bottom: 56px; }
 
-/* 반응형(모바일)에서 하단 여유 조금 더 주기 */
 @media (max-width: 767px){
   .fc-header{ bottom: 10px; }
   .fourcut.polaroid{ padding-bottom: 80px; }
 }
-/* =========================
-   프레임 디자인 (교체본)
-   ========================= */
 
-/* 공통: 프레임 전용 레이어가 안쪽 컨텐츠를 가리지 않도록 */
+/* =========================
+   프레임 디자인
+   ========================= */
 .fourcut { isolation: isolate; }
 
-/* ---------- 프레임 1 : 쌈뽕/모던 (네온 라인 + 글라스 헤더) ---------- */
+/* 프레임 1 : 쌈뽕/모던 */
 .fourcut.frame1{
-  border: 1px solid transparent;              /* 네온 그라데이션 보더용 */
-  border-radius: 22px;                         /* 기존보다 살짝 더 라운드 */
+  border: 1px solid transparent;
+  border-radius: 22px;
   background:
     linear-gradient(var(--polaroid-bg), var(--polaroid-bg)) padding-box,
-    linear-gradient(135deg,#5be6c3,#7a8cff) border-box; /* 네온 라인 */
-  box-shadow:
-    0 12px 30px rgba(0,0,0,.22),
-    inset 0 0 0 1px rgba(255,255,255,.06);
+    linear-gradient(135deg,#5be6c3,#7a8cff) border-box;
+  box-shadow: 0 12px 30px rgba(0,0,0,.22), inset 0 0 0 1px rgba(255,255,255,.06);
   position: relative;
 }
 .fourcut.frame1::before{
-  /* 은은한 네온 글로우 */
-  content:"";
-  position:absolute; inset:-6px;
-  border-radius: 26px;
+  content:""; position:absolute; inset:-6px; border-radius: 26px;
   background: linear-gradient(135deg, rgba(91,230,195,.28), rgba(122,140,255,.28));
-  filter: blur(18px);
-  z-index: -1;
+  filter: blur(18px); z-index: -1;
 }
 .fourcut.frame1 .fc-header{
-  /* 글라스 느낌의 하단 헤더 */
   background: linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.04));
   border: 1px solid rgba(255,255,255,.18);
-  border-radius: 14px;
-  backdrop-filter: blur(8px);
-  padding: 8px 12px;
-  box-shadow: 0 6px 18px rgba(0,0,0,.18);
+  border-radius: 14px; backdrop-filter: blur(8px);
+  padding: 8px 12px; box-shadow: 0 6px 18px rgba(0,0,0,.18);
 }
 .fourcut.frame1 .fc-title{ letter-spacing:.4px; font-weight:900; }
-.fourcut.frame1 .grid   { gap: 12px; }
-.fourcut.frame1 .cell   { border-radius: 14px; overflow:hidden; box-shadow: 0 4px 12px rgba(0,0,0,.12); }
+.fourcut.frame1 .grid{ gap: 12px; }
+.fourcut.frame1 .cell{ border-radius: 14px; overflow:hidden; box-shadow: 0 4px 12px rgba(0,0,0,.12); }
 
-/* ---------- 프레임 2 : 귀여움 (파스텔/스티커 느낌 + 마스킹 테이프) ---------- */
+/* 프레임 2 : 귀여움 */
 .fourcut.frame2{
-  border-radius: 26px;
-  border: 2px solid #ffdfea;                  /* 연핑크 라인 */
+  border-radius: 26px; border: 2px solid #ffdfea;
   box-shadow: 0 10px 24px rgba(255,140,180,.22), 0 6px 14px rgba(0,0,0,.08);
   position: relative;
 }
 .fourcut.frame2::before{
-  /* 파스텔 점박이 패턴 */
-  content:"";
-  position:absolute; inset:10px;
-  border-radius: 20px;
+  content:""; position:absolute; inset:10px; border-radius: 20px;
   background:
     radial-gradient(circle at 14% 18%, rgba(255,214,229,.55) 0 6px, transparent 7px),
     radial-gradient(circle at 82% 34%, rgba(197,231,255,.55) 0 6px, transparent 7px),
     radial-gradient(circle at 32% 78%, rgba(198,255,220,.55) 0 6px, transparent 7px);
-  pointer-events:none;
-  z-index:-1;
+  pointer-events:none; z-index:-1;
 }
 .fourcut.frame2::after{
-  /* 마스킹 테이프(상단 좌우) */
-  content:"";
-  position:absolute; top:-6px; left:18px; right:18px; height:16px;
-  background:
-    linear-gradient(90deg, #ffe9f3 0 50%, #eaf5ff 50% 100%);
-  opacity:.9;
-  filter: drop-shadow(0 2px 3px rgba(0,0,0,.08));
-  transform: rotate(-1.2deg);
-  border-radius: 4px;
+  content:""; position:absolute; top:-6px; left:18px; right:18px; height:16px;
+  background: linear-gradient(90deg, #ffe9f3 0 50%, #eaf5ff 50% 100%);
+  opacity:.9; filter: drop-shadow(0 2px 3px rgba(0,0,0,.08));
+  transform: rotate(-1.2deg); border-radius: 4px;
 }
 .fourcut.frame2 .fc-header{
-  background: #fffafcbd;
-  border: 1px dashed #ffb7cf;                 /* 귀여운 점선 */
-  border-radius: 12px;
-  padding: 8px 12px;
+  background: #fffafcbd; border: 1px dashed #ffb7cf;
+  border-radius: 12px; padding: 8px 12px;
 }
 .fourcut.frame2 .fc-title{ font-weight:900; letter-spacing:.2px; }
-.fourcut.frame2 .grid   { gap: 12px; }
-.fourcut.frame2 .cell   {
-  border-radius: 16px;
-  overflow: hidden;
+.fourcut.frame2 .grid{ gap: 12px; }
+.fourcut.frame2 .cell{
+  border-radius: 16px; overflow: hidden;
   box-shadow: 0 6px 12px rgba(255,170,200,.22);
   outline: 2px solid #ffe4ef;
 }
 
-/* ---------- 프레임 3 : 라이트 미니멀 매트 2×2 (프레임1과 확실히 다른 무드) ---------- */
+/* 프레임 3 : 라이트 미니멀 매트 2×2 */
 .fourcut.frame3{
-  /* 라이트 톤 종이 카드 느낌 */
-  border-radius: 14px;
-  border: 1px solid #e6e6e6;                 /* 얇은 헤어라인 */
-  background:
-    linear-gradient(180deg, #ffffff, #fbfbfb);/* 은은한 종이 느낌 */
-  box-shadow:
-    0 10px 22px rgba(0,0,0,.08),
-    0 1px 0 rgba(255,255,255,.9) inset;       /* 살짝의 엠보싱 */
-  color: #111;
-  padding: 16px;
+  border-radius: 14px; border: 1px solid #e6e6e6;
+  background: linear-gradient(180deg, #ffffff, #fbfbfb);
+  box-shadow: 0 10px 22px rgba(0,0,0,.08), 0 1px 0 rgba(255,255,255,.9) inset;
+  color: #111; padding: 16px;
 }
-
-/* 2×2 그리드 유지 + ‘매트 컷’ 같이 칸 사이에 얇은 구분선 */
 .fourcut.frame3 .grid{
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;                                  /* 셀 간 여백 */
-  position: relative;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px; position: relative;
 }
 .fourcut.frame3 .grid::before,
 .fourcut.frame3 .grid::after{
-  /* 수평/수직 아주 얇은 분할선 (인화지 매트 느낌) */
-  content: "";
-  position: absolute; inset: 0;
-  pointer-events: none;
+  content: ""; position: absolute; inset: 0; pointer-events: none;
 }
-.fourcut.frame3 .grid::before{                /* 세로선 */
+.fourcut.frame3 .grid::before{
   left: 50%; width: 1px; transform: translateX(-.5px);
   background: linear-gradient(180deg,#eee,#e9e9e9);
 }
-.fourcut.frame3 .grid::after{                 /* 가로선 */
+.fourcut.frame3 .grid::after{
   top: 50%; height: 1px; transform: translateY(-.5px);
   background: linear-gradient(90deg,#eee,#e9e9e9);
 }
-
-/* 셀: 더 각지고(=프1보다 덜 둥글), 테두리 얇게, 종이 위 사진 느낌 */
 .fourcut.frame3 .cell{
-  border-radius: 8px;
-  overflow: hidden;
-  background: #f4f4f4;
-  outline: 1px solid #ededed;                 /* 얇은 외곽선 */
-  box-shadow:
-    0 1px 0 rgba(0,0,0,.04),
-    0 8px 14px rgba(0,0,0,.06);               /* 가벼운 섀도 */
+  border-radius: 8px; overflow: hidden; background: #f4f4f4;
+  outline: 1px solid #ededed;
+  box-shadow: 0 1px 0 rgba(0,0,0,.04), 0 8px 14px rgba(0,0,0,.06);
   transition: transform .12s ease, box-shadow .12s ease;
 }
-.fourcut.frame3 .cell:hover{
-  transform: translateY(-1px);
-  box-shadow: 0 10px 20px rgba(0,0,0,.10);
-}
-.fourcut.frame3 .cell img{
-  width:100%; height:100%; object-fit:cover;
-}
-
-/* 헤더: 라이트 모노톤, 라인만 살짝—프1의 글라스/네온과 정반대 */
+.fourcut.frame3 .cell:hover{ transform: translateY(-1px); box-shadow: 0 10px 20px rgba(0,0,0,.10); }
+.fourcut.frame3 .cell img{ width:100%; height:100%; object-fit:cover; }
 .fourcut.frame3 .fc-header{
-  background: #ffffffcc;
-  border: 1px solid #eaeaea;
-  border-radius: 10px;
-  padding: 6px 10px;
-  box-shadow: 0 2px 6px rgba(0,0,0,.06);
-  backdrop-filter: none;                       /* 글라스 X */
+  background: #ffffffcc; border: 1px solid #eaeaea; border-radius: 10px;
+  padding: 6px 10px; box-shadow: 0 2px 6px rgba(0,0,0,.06); backdrop-filter: none;
 }
-.fourcut.frame3 .fc-title{
-  font-weight: 800;
-  letter-spacing: .2px;
-  color: #222;
-}
-.fourcut.frame3 .fc-logo{
-  width: 24px; height: 24px; object-fit: contain;
-  filter: none;                                /* 다크 보정 X */
-}
-/* 카메라 카드 가로 가운데 정렬 + 최대 너비 제한 */
-.card.cam{
-  margin-inline: auto;
-  width: min(92vw, 640px);
-}
-
-/* 광각 크롭 느낌: 중앙부 확대 표시 */
-#video{
-  transform: scale(var(--cam-zoom));
-  transform-origin: 50% 50%;
-}
-#video.mirror{
-  /* 혹시 미러를 쓸 경우 확대와 함께 적용되도록 */
-  transform: scaleX(-1) scale(var(--cam-zoom));
-}
+.fourcut.frame3 .fc-title{ font-weight: 800; letter-spacing: .2px; color: #222; }
+.fourcut.frame3 .fc-logo{ width: 24px; height: 24px; object-fit: contain; filter: none; }
