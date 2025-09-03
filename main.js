@@ -357,7 +357,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 갤러리
   $("#btnGallery").onclick = async () => {
     const pass = prompt("갤러리 암호 입력:");
-    if (pass === "posungprogramming") {
+    if (pass === "1111") {
       await renderGallery();
       $("#gallery").hidden = false;
       $("#gallery").classList.add("open");
@@ -386,3 +386,4 @@ document.addEventListener("DOMContentLoaded", async () => {
   updateFontColor();
   toggleNextButtons();
 });
+
