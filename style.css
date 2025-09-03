@@ -238,62 +238,77 @@ button:disabled{opacity:.5;cursor:not-allowed}
   outline: 2px solid #ffe4ef;
 }
 
-/* ---------- 프레임 3 : MZ 감성 2x2 ---------- */
-.fourcut.frame3 {
-  border-radius: 20px;
-  border: 1px solid transparent;
+/* ---------- 프레임 3 : 라이트 미니멀 매트 2×2 (프레임1과 확실히 다른 무드) ---------- */
+.fourcut.frame3{
+  /* 라이트 톤 종이 카드 느낌 */
+  border-radius: 14px;
+  border: 1px solid #e6e6e6;                 /* 얇은 헤어라인 */
   background:
-    linear-gradient(180deg, #0e0f14, #161b22) padding-box,
-    linear-gradient(135deg, rgba(255,255,255,.18), rgba(255,255,255,0)) border-box;
+    linear-gradient(180deg, #ffffff, #fbfbfb);/* 은은한 종이 느낌 */
   box-shadow:
-    0 8px 20px rgba(0,0,0,.35),
-    inset 0 0 0 1px rgba(255,255,255,.05);
-  color: #f5f7fb;
-  padding: 18px;
+    0 10px 22px rgba(0,0,0,.08),
+    0 1px 0 rgba(255,255,255,.9) inset;       /* 살짝의 엠보싱 */
+  color: #111;
+  padding: 16px;
 }
 
-/* 2x2 그리드 유지 (기본 유지, gap만 키움) */
-.fourcut.frame3 .grid {
+/* 2×2 그리드 유지 + ‘매트 컷’ 같이 칸 사이에 얇은 구분선 */
+.fourcut.frame3 .grid{
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  gap: 10px;                                  /* 셀 간 여백 */
+  position: relative;
+}
+.fourcut.frame3 .grid::before,
+.fourcut.frame3 .grid::after{
+  /* 수평/수직 아주 얇은 분할선 (인화지 매트 느낌) */
+  content: "";
+  position: absolute; inset: 0;
+  pointer-events: none;
+}
+.fourcut.frame3 .grid::before{                /* 세로선 */
+  left: 50%; width: 1px; transform: translateX(-.5px);
+  background: linear-gradient(180deg,#eee,#e9e9e9);
+}
+.fourcut.frame3 .grid::after{                 /* 가로선 */
+  top: 50%; height: 1px; transform: translateY(-.5px);
+  background: linear-gradient(90deg,#eee,#e9e9e9);
 }
 
-/* 각 셀(사진) */
-.fourcut.frame3 .cell {
-  background: #0a0d12;
-  border-radius: 14px;
+/* 셀: 더 각지고(=프1보다 덜 둥글), 테두리 얇게, 종이 위 사진 느낌 */
+.fourcut.frame3 .cell{
+  border-radius: 8px;
   overflow: hidden;
-  outline: 1px solid rgba(255,255,255,.08);
-  box-shadow: 0 4px 10px rgba(0,0,0,.25);
-  transition: transform .15s ease, box-shadow .15s ease;
+  background: #f4f4f4;
+  outline: 1px solid #ededed;                 /* 얇은 외곽선 */
+  box-shadow:
+    0 1px 0 rgba(0,0,0,.04),
+    0 8px 14px rgba(0,0,0,.06);               /* 가벼운 섀도 */
+  transition: transform .12s ease, box-shadow .12s ease;
 }
-.fourcut.frame3 .cell:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 18px rgba(0,0,0,.35);
+.fourcut.frame3 .cell:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(0,0,0,.10);
 }
-.fourcut.frame3 .cell img {
-  width: 100%; height: 100%; object-fit: cover;
+.fourcut.frame3 .cell img{
+  width:100%; height:100%; object-fit:cover;
 }
 
-/* 헤더 (로고 + 텍스트) */
-.fourcut.frame3 .fc-header {
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.12);
-  border-radius: 12px;
-  padding: 8px 12px;
-  backdrop-filter: blur(6px);
-  box-shadow: 0 4px 12px rgba(0,0,0,.25);
-  margin-top: 10px;
-  display: flex; justify-content: center; align-items: center; gap: 8px;
+/* 헤더: 라이트 모노톤, 라인만 살짝—프1의 글라스/네온과 정반대 */
+.fourcut.frame3 .fc-header{
+  background: #ffffffcc;
+  border: 1px solid #eaeaea;
+  border-radius: 10px;
+  padding: 6px 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.06);
+  backdrop-filter: none;                       /* 글라스 X */
 }
-.fourcut.frame3 .fc-title {
+.fourcut.frame3 .fc-title{
   font-weight: 800;
-  font-size: 15px;
-  letter-spacing: .5px;
-  color: #eaf2ff;
+  letter-spacing: .2px;
+  color: #222;
 }
-.fourcut.frame3 .fc-logo {
-  width: 26px; height: 26px; object-fit: contain;
-  filter: brightness(1.2) saturate(1.05);
+.fourcut.frame3 .fc-logo{
+  width: 24px; height: 24px; object-fit: contain;
+  filter: none;                                /* 다크 보정 X */
 }
