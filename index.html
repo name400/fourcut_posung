@@ -5,10 +5,17 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>보성제 | 4컷</title>
   <link rel="stylesheet" href="style.css" />
-  <!-- QR 팝업 인라인 -->
+  <!-- QR 팝업 인라인 (기본은 display:none 만 지정) -->
   <style>
-    #qrPopup{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;display:flex;justify-content:center;align-items:center}
-    #qrPopup .popup-content{position:relative;background:#fff;padding:24px;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.3);width:min(90vw,420px);text-align:center;display:flex;flex-direction:column;align-items:center}
+    #qrPopup{
+      position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;
+      display:none;justify-content:center;align-items:center;
+    }
+    #qrPopup .popup-content{
+      position:relative;background:#fff;padding:24px;border-radius:16px;
+      box-shadow:0 10px 30px rgba(0,0,0,.3);width:min(90vw,420px);
+      text-align:center;display:flex;flex-direction:column;align-items:center
+    }
     #qrPopup .popup-title{font-size:18px;font-weight:700;margin-bottom:12px}
     #qrPopup .close-btn{position:absolute;top:8px;right:12px;font-size:22px;font-weight:700;cursor:pointer}
     #qrPopup .close-btn:hover{color:#e00}
@@ -48,26 +55,27 @@
       </div>
     </section>
 
-   <!-- ℹ️ 0.5단계: 이용방법 -->
-<section id="pageHowto" class="page" aria-label="이용방법">
-  <div class="panel">
-    <div class="card howto">
-      <h2>이용방법</h2>
-      <ol class="howto-steps">
-        <li>타이머는 기본 <b>6초</b>입니다!</li>
-        <li><b>촬영하기</b>를 누르고 카메라 접근을 허용해주세요!</li>
-        <li>사진은 기본 <b>6번</b> 촬영돼요!</li>
-        <li><b>뒤로가기 버튼</b>으로 촬영 중단이 가능해요.</li>
-        <li>촬영 후 <b>프레임 선택</b>이 가능해요!</li>
-        <li>촬영이 끝나고 <b>친구들과 QR코드</b>를 공유해요.</li>
-      </ol>
-      <div class="actions between">
-        <span></span>
-        <button id="btnToCamera" class="accent">다음 → 촬영으로</button>
+    <!-- ℹ️ 0.5단계: 이용방법 -->
+    <section id="pageHowto" class="page" aria-label="이용방법">
+      <div class="panel">
+        <div class="card howto">
+          <h2>이용방법</h2>
+          <ol class="howto-steps">
+            <li>타이머는 기본 <b>6초</b>입니다!</li>
+            <li><b>촬영하기</b>를 누르고 카메라 접근을 허용해주세요!</li>
+            <li>사진은 기본 <b>6번</b> 촬영돼요!</li>
+            <li><b>뒤로가기 버튼</b>으로 촬영 중단이 가능해요.</li>
+            <li>촬영 후 <b>프레임 선택</b>이 가능해요!</li>
+            <li>촬영이 끝나고 <b>친구들과 QR코드</b>를 공유해요.</li>
+          </ol>
+          <div class="actions between">
+            <span></span>
+            <button id="btnToCamera" class="accent">다음 → 촬영으로</button>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-</section>
+    </section>
+
     <!-- 📸 1단계: 촬영 -->
     <section id="pageCamera" class="page" aria-label="촬영 단계">
       <div class="panel">
@@ -124,7 +132,6 @@
           </div>
         </div>
 
-        <!-- ✅ 프레임 선택만 남김 -->
         <label class="cap-label">프레임 선택</label>
         <select id="frameDesign" class="input small">
           <option value="">기본 프레임</option>
@@ -178,4 +185,3 @@
   <script src="main.js"></script>
 </body>
 </html>
-
