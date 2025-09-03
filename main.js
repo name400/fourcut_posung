@@ -1,26 +1,11 @@
 // ==============================
-// main.js (완성본)
+// main.js (수동 합성 최종본 - html2canvas 불사용)
 // ==============================
 
 // ---------- helpers ----------
 const $  = (q, r = document) => r.querySelector(q);
 const $$ = (q, r = document) => [...r.querySelectorAll(q)];
 const on = (sel, type, handler) => { const el = $(sel); if (el) el.addEventListener(type, handler); };
-
-// html2canvas 동적 로더 (없으면 CDN에서 불러옴)
-async function ensureHtml2canvas(){
-  if (window.html2canvas && typeof window.html2canvas === "function") return;
-  await new Promise((resolve, reject) => {
-    const s = document.createElement("script");
-    s.src = "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js";
-    s.onload = () => resolve();
-    s.onerror = () => reject(new Error("html2canvas CDN 로드 실패"));
-    document.head.appendChild(s);
-  });
-  if (!(window.html2canvas && typeof window.html2canvas === "function")) {
-    throw new Error("html2canvas 로드 실패");
-  }
-}
 
 // global state
 let stream = null;
@@ -46,7 +31,6 @@ function showPage(name) {
   const steps = $(".steps");
   const visible = ["camera","select","edit"].includes(name);
   if (steps) steps.style.display = visible ? "flex" : "none";
-
   $$(".step").forEach(s => s.classList.toggle("active", s.dataset.step === name));
 
   // 카메라 페이지가 아니면 타이머/카운트다운 종료
@@ -58,8 +42,7 @@ function forceHideQrPopup(){
   const p = $("#qrPopup");
   if (!p) return;
   p.style.display = "none";
-  const box = $("#qrPopupContainer");
-  if (box) box.innerHTML = "";
+  const box = $("#qrPopupContainer"); if (box) box.innerHTML = "";
   const l = $("#qrLoading"); if (l) l.style.display = "none";
   const e = $("#qrError");  if (e) { e.style.display = "none"; e.textContent = ""; }
 }
@@ -68,7 +51,6 @@ function openQrPopup(url){
   const p=$("#qrPopup"), w=$("#qrPopupContainer");
   if (!p || !w) return;
   w.innerHTML="";
-  // qrcodejs 전역 객체 사용
   // eslint-disable-next-line no-undef
   new QRCode(w,{text:url,width:computeQrPopupSize(),height:computeQrPopupSize(),correctLevel:QRCode.CorrectLevel.M});
   p.style.display='flex';
@@ -79,7 +61,7 @@ function closeQrPopup(){
   if (p) p.style.display='none';
   showPage('camera');
 }
-window.closeQrPopup = closeQrPopup; // inline onclick에서 접근 가능하도록
+window.closeQrPopup = closeQrPopup;
 
 // ---------- camera ----------
 async function startCamera() {
@@ -91,12 +73,7 @@ async function startCamera() {
     }
     if (stream) stopCamera();
     const constraints = {
-      video: {
-        facingMode: currentFacing,
-        width: { ideal: 720 },
-        height: { ideal: 960 },
-        aspectRatio: { ideal: 0.75 }
-      },
+      video: { facingMode: currentFacing, width: { ideal: 720 }, height: { ideal: 960 }, aspectRatio: { ideal: 0.75 } },
       audio: false
     };
     stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -152,12 +129,9 @@ async function startAutoCapture() {
     if (remain <= 0) {
       remain = 6;
       if (shots.length <= 5) {
-        triggerFlash();
-        doCapture();
+        triggerFlash(); doCapture();
       } else {
-        stopAutoCapture();
-        toggleNextButtons();
-        showPage("select");
+        stopAutoCapture(); toggleNextButtons(); showPage("select");
       }
     }
   }, 1000);
@@ -165,7 +139,7 @@ async function startAutoCapture() {
 function doCapture() {
   const video = $("#video");
   const canvas = document.createElement("canvas");
-  canvas.width = video.videoWidth || video.clientWidth || 720;
+  canvas.width  = video.videoWidth  || video.clientWidth  || 720;
   canvas.height = video.videoHeight || video.clientHeight || 960;
   const ctx = canvas.getContext("2d");
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -217,7 +191,7 @@ function toggleNextButtons() {
   if (btnMake) btnMake.disabled = !ok4;
 }
 
-// ---------- logo inline ----------
+// ---------- logo inline (현재는 미사용이지만 보존) ----------
 async function inlineImageToDataURL(imgEl) {
   if (!imgEl || imgEl.src.startsWith("data:")) return;
   try {
@@ -232,15 +206,11 @@ async function inlineImageToDataURL(imgEl) {
 }
 async function prepareLogosForCapture() { await inlineImageToDataURL($(".fc-logo")); }
 
-// ---------- env ----------
-function isMobile(){ return /iphone|ipad|ipod|android|mobile/i.test(navigator.userAgent); }
-
-// ---------- compose (Safari 안전모드 포함) ----------
-// === 수동 합성 헬퍼 ===
+// ---------- manual compose helpers ----------
 function loadImageSafe(src){
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.crossOrigin = "anonymous"; // dataURL도 OK
+    img.crossOrigin = "anonymous";
     img.onload = () => resolve(img);
     img.onerror = () => reject(new Error("이미지 로드 실패: " + src));
     img.src = src;
@@ -263,34 +233,32 @@ function drawCover(ctx, img, x, y, w, h){
   ctx.drawImage(img, dx, dy, dw, dh);
 }
 
-// === 프레임 프리셋 (2:3 + 2×2 슬롯) ===
+// ---------- frame presets + manual compose ----------
 const FRAME_PRESETS = {
   frame1:{ bg:'./frame1.jpg', top:.035, bottom:.175, side:.035, gap:.032, pad:.012, radius:12 },
   frame2:{ bg:'./frame2.jpg', top:.038, bottom:.175, side:.035, gap:.032, pad:.010, radius:10 },
   frame3:{ bg:'./frame3.jpg', top:.026, bottom:.190, side:.026, gap:.024, pad:0,    radius: 2 }
 };
-
-// === 수동 캔버스 합성 ===
 async function composeFourcutManual(){
   const W = 1600, H = Math.round(W * 3/2); // 2:3
   const cvs = document.createElement("canvas"); cvs.width = W; cvs.height = H;
   const ctx = cvs.getContext("2d");
 
-  // 현재 선택된 프레임
-  const node = document.querySelector("#fourcut");
+  // 현재 프레임
+  const node = $("#fourcut");
   const key = ["frame1","frame2","frame3"].find(k => node.classList.contains(k))
-    || (document.querySelector("#frameDesign")?.value || "");
+           || ($("#frameDesign")?.value || "");
   const p = FRAME_PRESETS[key] || { top:.05, bottom:.12, side:.05, gap:.03, pad:.008, radius:12, bg:null };
 
   // 배경
   if (p.bg) {
     try { const bg = await loadImageSafe(p.bg); ctx.drawImage(bg, 0, 0, W, H); }
-    catch { ctx.fillStyle = "#fff"; ctx.fillRect(0,0,W,H); }
+    catch { ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H); }
   } else {
-    ctx.fillStyle = "#fff"; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H);
   }
 
-  // 슬롯 영역 계산 (2×2, 각 셀 3:4)
+  // 2×2 슬롯(각 3:4)
   const gridL = Math.round(p.side*W), gridR = Math.round(p.side*W);
   const gridT = Math.round(p.top*H),  gridB = Math.round(p.bottom*H);
   const gridW = W - gridL - gridR,    gridH = H - gridT - gridB;
@@ -303,11 +271,11 @@ async function composeFourcutManual(){
   const x1 = gridL, x2 = gridL + cellW + gap;
   const y1 = yStart, y2 = yStart + cellH + gap;
 
-  // 선택된 4장 배치(선택 순서 그대로)
   const ids = [...selected];
   for (let i=0;i<4;i++){
     const img = await loadImageSafe(shots[ids[i]]);
-    const x = (i%2===0)?x1:x2, y = (i<2)?y1:y2;
+    const x = (i%2===0)?x1:x2;
+    const y = (i<2)?y1:y2;
     const pad = Math.round((p.pad||0) * cellW);
     const rx = x+pad, ry = y+pad, rw = cellW-pad*2, rh = cellH-pad*2;
     const r  = Math.round((p.radius||12) * (W/1600));
@@ -317,12 +285,9 @@ async function composeFourcutManual(){
   const mobile = /iphone|ipad|ipod|android|mobile/i.test(navigator.userAgent);
   return cvs.toDataURL("image/jpeg", mobile ? 0.82 : 0.92);
 }
-
-// === 버튼 액션 (수동 합성만 호출) ===
 async function makeFourcut(){
   if (selected.size !== 4) return alert("4장을 선택하세요");
-  const btnMake = document.querySelector("#btnMake");
-  const btnSave = document.querySelector("#btnSave");
+  const btnMake = $("#btnMake"); const btnSave = $("#btnSave");
   if (btnMake){ btnMake.disabled = true; btnMake.textContent = "합성 중..."; }
   try{
     finalDataUrl = await composeFourcutManual();
@@ -332,62 +297,6 @@ async function makeFourcut(){
     alert("4컷 만들기 실패: " + (err?.message || err));
   }finally{
     if (btnMake){ btnMake.disabled = false; btnMake.textContent = "4컷 만들기"; }
-  }
-}
-
-    // 사파리에서 문제되는 CSS 임시 해제
-    setStyle(node, { isolation: "auto" });
-    node.querySelectorAll("*").forEach(el => setStyle(el, { backdropFilter: "none", mixBlendMode: "normal" }));
-
-    // 내부 IMG 로딩 대기
-    const imgs = [...node.querySelectorAll("img")];
-    await Promise.all(imgs.map(img => img.complete ? 1 : new Promise(r => { img.onload = img.onerror = r; })));
-
-    // 레이아웃 안정화
-    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-
-    // 1차 시도
-    let canvas;
-    try {
-      canvas = await window.html2canvas(node, {
-        backgroundColor: null,
-        useCORS: true,
-        allowTaint: false,
-        removeContainer: true,
-        imageTimeout: 0,
-        foreignObjectRendering: false,
-        scale: isMobile() ? 1.25 : 2,
-      });
-    } catch (e1) {
-      console.warn("1차 캡처 실패, 보수 설정으로 재시도", e1);
-      canvas = await window.html2canvas(node, {
-        backgroundColor: null,
-        useCORS: true,
-        allowTaint: true,
-        removeContainer: true,
-        imageTimeout: 0,
-        foreignObjectRendering: false,
-        scale: 1,
-        logging: false
-      });
-    }
-
-    const quality = isMobile() ? 0.82 : 0.92;
-    finalDataUrl = canvas.toDataURL("image/jpeg", quality);
-
-    // 저장 버튼 활성화
-    if (btnSave) {
-      btnSave.disabled = false;
-      btnSave.removeAttribute("disabled");
-      btnSave.setAttribute("aria-disabled","false");
-    }
-  } catch (err) {
-    console.error(err);
-    alert("4컷 만들기 실패: " + (err?.message || err));
-  } finally {
-    // 임시 스타일 원복
-    cleanup.forEach(([el, prev]) => { for (const k in prev) el.style[k] = prev[k]; });
-    if (btnMake) { btnMake.disabled = false; btnMake.textContent = "4컷 만들기"; }
   }
 }
 
@@ -430,6 +339,9 @@ function applyFrameDesign(key){
   const node = $("#fourcut");
   node.classList.remove("frame1","frame2","frame3");
   if (key) node.classList.add(key);
+  // 프레임 바꾸면 지난 합성은 무효
+  finalDataUrl = null;
+  const btnSave = $("#btnSave"); if (btnSave) btnSave.disabled = true;
 }
 
 // ---------- Cloudinary ----------
@@ -475,7 +387,6 @@ async function showQrPopupWithUpload(){
 
 // ---------- init ----------
 function init(){
-  // 첫 진입
   showPage("landing"); forceHideQrPopup();
 
   // 네비
@@ -533,11 +444,9 @@ function init(){
     $("#backdrop").hidden = true;
   });
 
-  // 초기 버튼 상태
   toggleNextButtons();
 }
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
 else init();
 
 window.addEventListener("pageshow", forceHideQrPopup);
-
