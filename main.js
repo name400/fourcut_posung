@@ -18,19 +18,26 @@ const PAGES = {
   edit:    "#pageEdit"
 };
 function showPage(name) {
-  // 1) 모든 page에서 active 제거 (누락 방지)
   document.querySelectorAll(".page").forEach(el => el.classList.remove("active"));
-  // 2) 목표 페이지만 활성화
   const target = $(PAGES[name]);
   if (target) target.classList.add("active");
 
-  // 3) 스텝바 노출 제어 (촬영/선택/편집에서만 표시)
   const steps = $(".steps");
   const visible = ["camera","select","edit"].includes(name);
   if (steps) steps.style.display = visible ? "flex" : "none";
 
-  // 4) 스텝 강조
   $$(".step").forEach(s => s.classList.toggle("active", s.dataset.step === name));
+}
+
+// ---------- QR 팝업 강제 비활성(리로드/복원 대응) ----------
+function forceHideQrPopup(){
+  const p = $("#qrPopup");
+  if (!p) return;
+  p.style.display = "none";                   // 보이던 상태 강제 닫기
+  const box = $("#qrPopupContainer");
+  if (box) box.innerHTML = "";                // QR 코드 캔버스 제거
+  const l = $("#qrLoading"); if (l) l.style.display = "none";
+  const e = $("#qrError");   if (e) { e.style.display = "none"; e.textContent = ""; }
 }
 
 // ---------- 카메라 ----------
@@ -41,7 +48,6 @@ async function startCamera() {
       return;
     }
     if (stream) stopCamera();
-    // 광각 완화: 3:4 비율 + 중간 해상도
     const constraints = {
       video: {
         facingMode: currentFacing,
@@ -146,7 +152,6 @@ function renderThumbs() {
       renderPreview();
       toggleNextButtons();
 
-      // ✅ 4장 선택 시 자동으로 편집 페이지 이동 + 프레임 즉시 반영
       if (selected.size === 4) {
         const fd = $("#frameDesign");
         if (fd && fd.value) applyFrameDesign(fd.value);
@@ -285,8 +290,12 @@ function openQrPopup(url){
   new QRCode(w,{text:url,width:computeQrPopupSize(),height:computeQrPopupSize(),correctLevel:QRCode.CorrectLevel.M});
   p.style.display='flex';
 }
-function closeQrPopup(){ resetSession(); $("#qrPopup").style.display='none'; showPage('camera'); }
-
+function closeQrPopup(){
+  resetSession();
+  const p = $("#qrPopup");
+  if (p) p.style.display='none';
+  showPage('camera');
+}
 async function uploadFinalToCloudinary(){
   const blob = await (await fetch(finalDataUrl)).blob();
   if (blob.size > 10 * 1024 * 1024) {
@@ -312,23 +321,36 @@ async function uploadFinalToCloudinary(){
   return data.secure_url;
 }
 async function showQrPopupWithUpload(){
-  setQrState({loading:true, error:""});
-  $("#qrPopup").style.display='flex';
-  $("#qrPopupContainer").innerHTML = "";
+  // 팝업 강제 초기화 후 열기 (중복 방지)
+  forceHideQrPopup();
+  const loading = $("#qrLoading");
+  if (loading) loading.style.display = "block";
+  const cont = $("#qrPopupContainer");
+  if (cont) cont.innerHTML = "";
+  const p = $("#qrPopup");
+  if (p) p.style.display='flex';
+
   try{
     const url = await uploadFinalToCloudinary();
-    setQrState({loading:false});
+    if (loading) loading.style.display = "none";
     openQrPopup(makeViewerUrl(url));
   }catch(err){
     console.error(err);
-    setQrState({loading:false, error: "QR 생성 실패: " + err.message});
+    if (loading) loading.style.display = "none";
+    const e = $("#qrError");
+    if (e){
+      e.style.display = "block";
+      e.textContent = "QR 생성 실패: " + err.message;
+    }
     const w = $("#qrPopupContainer");
-    const retry = document.createElement("button");
-    retry.textContent = "다시 시도";
-    retry.className = "ghost";
-    retry.onclick = () => { setQrState({loading:true, error:""}); showQrPopupWithUpload(); };
-    w.innerHTML = "";
-    w.appendChild(retry);
+    if (w){
+      const retry = document.createElement("button");
+      retry.textContent = "다시 시도";
+      retry.className = "ghost";
+      retry.onclick = () => { forceHideQrPopup(); showQrPopupWithUpload(); };
+      w.innerHTML = "";
+      w.appendChild(retry);
+    }
   }
 }
 function makeViewerUrl(u){
@@ -338,10 +360,19 @@ function makeViewerUrl(u){
 }
 
 // ---------- 이벤트 ----------
-document.addEventListener("DOMContentLoaded", async () => {
+document.addEventListener("DOMContentLoaded", () => {
   // 초기 진입: 메인 페이지
   showPage("landing");
 
+  // 새로고침/복원 시 QR 팝업 절대 보이지 않게
+  forceHideQrPopup();
+});
+window.addEventListener("pageshow", () => {
+  // BFCache 복원될 때도 팝업 강제 닫기
+  forceHideQrPopup();
+});
+
+document.addEventListener("DOMContentLoaded", async () => {
   // 메인 → 이용방법
   $("#btnGoHowto").onclick = () => showPage("howto");
   // 이용방법 → 촬영
