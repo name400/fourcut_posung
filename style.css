@@ -169,102 +169,84 @@ button:disabled{opacity:.5;cursor:not-allowed}
 }
 
 /* =========================
-   프레임 디자인
+   프레임 디자인 (2:3 템플릿 + 2×2 슬롯)
+   - 각 frameX는 배경이미지 + 아래 여백(로고/문구) + 슬롯 위치만 다름
+   - 필요하면 변수만 조절해서 정밀 정렬 가능
    ========================= */
-.fourcut { isolation: isolate; }
 
-/* 프레임 1 : 쌈뽕/모던 */
-.fourcut.frame1{
-  border: 1px solid transparent;
-  border-radius: 22px;
-  background:
-    linear-gradient(var(--polaroid-bg), var(--polaroid-bg)) padding-box,
-    linear-gradient(135deg,#5be6c3,#7a8cff) border-box;
-  box-shadow: 0 12px 30px rgba(0,0,0,.22), inset 0 0 0 1px rgba(255,255,255,.06);
-  position: relative;
-}
-.fourcut.frame1::before{
-  content:""; position:absolute; inset:-6px; border-radius: 26px;
-  background: linear-gradient(135deg, rgba(91,230,195,.28), rgba(122,140,255,.28));
-  filter: blur(18px); z-index: -1;
-}
-.fourcut.frame1 .fc-header{
-  background: linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.04));
-  border: 1px solid rgba(255,255,255,.18);
-  border-radius: 14px; backdrop-filter: blur(8px);
-  padding: 8px 12px; box-shadow: 0 6px 18px rgba(0,0,0,.18);
-}
-.fourcut.frame1 .fc-title{ letter-spacing:.4px; font-weight:900; }
-.fourcut.frame1 .grid{ gap: 12px; }
-.fourcut.frame1 .cell{ border-radius: 14px; overflow:hidden; box-shadow: 0 4px 12px rgba(0,0,0,.12); }
+/* 공통: 템플릿 모드일 땐 헤더 숨김(배경에 로고/문구가 있음) */
+.fourcut.frame1 .fc-header,
+.fourcut.frame2 .fc-header,
+.fourcut.frame3 .fc-header{ display:none; }
 
-/* 프레임 2 : 귀여움 */
-.fourcut.frame2{
-  border-radius: 26px; border: 2px solid #ffdfea;
-  box-shadow: 0 10px 24px rgba(255,140,180,.22), 0 6px 14px rgba(0,0,0,.08);
-  position: relative;
-}
-.fourcut.frame2::before{
-  content:""; position:absolute; inset:10px; border-radius: 20px;
-  background:
-    radial-gradient(circle at 14% 18%, rgba(255,214,229,.55) 0 6px, transparent 7px),
-    radial-gradient(circle at 82% 34%, rgba(197,231,255,.55) 0 6px, transparent 7px),
-    radial-gradient(circle at 32% 78%, rgba(198,255,220,.55) 0 6px, transparent 7px);
-  pointer-events:none; z-index:-1;
-}
-.fourcut.frame2::after{
-  content:""; position:absolute; top:-6px; left:18px; right:18px; height:16px;
-  background: linear-gradient(90deg, #ffe9f3 0 50%, #eaf5ff 50% 100%);
-  opacity:.9; filter: drop-shadow(0 2px 3px rgba(0,0,0,.08));
-  transform: rotate(-1.2deg); border-radius: 4px;
-}
-.fourcut.frame2 .fc-header{
-  background: #fffafcbd; border: 1px dashed #ffb7cf;
-  border-radius: 12px; padding: 8px 12px;
-}
-.fourcut.frame2 .fc-title{ font-weight:900; letter-spacing:.2px; }
-.fourcut.frame2 .grid{ gap: 12px; }
-.fourcut.frame2 .cell{
-  border-radius: 16px; overflow: hidden;
-  box-shadow: 0 6px 12px rgba(255,170,200,.22);
-  outline: 2px solid #ffe4ef;
-}
-
-/* 프레임 3 : 라이트 미니멀 매트 2×2 */
-.fourcut.frame3{
-  border-radius: 14px; border: 1px solid #e6e6e6;
-  background: linear-gradient(180deg, #ffffff, #fbfbfb);
-  box-shadow: 0 10px 22px rgba(0,0,0,.08), 0 1px 0 rgba(255,255,255,.9) inset;
-  color: #111; padding: 16px;
-}
+/* 공통: 그리드를 절대배치해서 슬롯 위치를 정확히 맞춤 */
+.fourcut.frame1 .grid,
+.fourcut.frame2 .grid,
 .fourcut.frame3 .grid{
-  display: grid; grid-template-columns: 1fr 1fr; gap: 10px; position: relative;
+  position:absolute;
+  left: var(--slot-side, 3.5%);
+  right: var(--slot-side, 3.5%);
+  top: var(--slot-top, 3.5%);
+  bottom: var(--slot-bottom, 18%);
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--slot-gap, 3%);
 }
-.fourcut.frame3 .grid::before,
-.fourcut.frame3 .grid::after{
-  content: ""; position: absolute; inset: 0; pointer-events: none;
-}
-.fourcut.frame3 .grid::before{
-  left: 50%; width: 1px; transform: translateX(-.5px);
-  background: linear-gradient(180deg,#eee,#e9e9e9);
-}
-.fourcut.frame3 .grid::after{
-  top: 50%; height: 1px; transform: translateY(-.5px);
-  background: linear-gradient(90deg,#eee,#e9e9e9);
-}
+
+/* 공통: 셀 자체는 투명, 안의 이미지로만 채움
+   padding을 주면 배경의 '하얀 테두리/검은 라인'이 살짝 보이게 됨 */
+.fourcut.frame1 .cell,
+.fourcut.frame2 .cell,
 .fourcut.frame3 .cell{
-  border-radius: 8px; overflow: hidden; background: #f4f4f4;
-  outline: 1px solid #ededed;
-  box-shadow: 0 1px 0 rgba(0,0,0,.04), 0 8px 14px rgba(0,0,0,.06);
-  transition: transform .12s ease, box-shadow .12s ease;
+  background: transparent;
+  border-radius: var(--slot-radius, 12px);
+  padding: var(--slot-pad, 1%);
+  overflow: hidden;
+  /* 기존 기본 스타일 덮어쓰기 */
+  outline: none;
+  box-shadow: none;
 }
-.fourcut.frame3 .cell:hover{ transform: translateY(-1px); box-shadow: 0 10px 20px rgba(0,0,0,.10); }
-.fourcut.frame3 .cell img{ width:100%; height:100%; object-fit:cover; }
-.fourcut.frame3 .fc-header{
-  background: #ffffffcc; border: 1px solid #eaeaea; border-radius: 10px;
-  padding: 6px 10px; box-shadow: 0 2px 6px rgba(0,0,0,.06); backdrop-filter: none;
+
+/* 공통: 이미지 채우기 */
+.fourcut.frame1 .cell img,
+.fourcut.frame2 .cell img,
+.fourcut.frame3 .cell img{
+  width:100%; height:100%; object-fit:cover;
+  border-radius: calc(var(--slot-radius, 12px) - var(--slot-pad, 1%));
 }
-.fourcut.frame3 .fc-title{ font-weight: 800; letter-spacing: .2px; color: #222; }
-.fourcut.frame3 .fc-logo{ width: 24px; height: 24px; object-fit: contain; filter: none; }
 
+/* ===== 개별 프레임 ===== */
 
+/* frame1 : (첫 번째 이미지) 블러 배경 + 흰 슬롯 + 하단 로고/문구 영역 */
+.fourcut.frame1{
+  background: url('frame1.jpg') center/cover no-repeat;
+  /* 슬롯 위치/간격(퍼센트)은 필요 시 미세조정) */
+  --slot-top: 3.5%;
+  --slot-bottom: 17.5%;
+  --slot-side: 3.5%;
+  --slot-gap: 3.2%;
+  --slot-pad: 1.2%;
+  --slot-radius: 12px;
+}
+
+/* frame2 : (두 번째 이미지) 화이트 배경 + 얇은 외곽선 스타일 */
+.fourcut.frame2{
+  background: url('frame2.jpg') center/cover no-repeat;
+  --slot-top: 3.8%;
+  --slot-bottom: 17.5%;
+  --slot-side: 3.5%;
+  --slot-gap: 3.2%;
+  --slot-pad: 1.0%;
+  --slot-radius: 10px;
+}
+
+/* frame3 : (세 번째 이미지) 블랙 바탕 + 굵은 검은 라인 */
+.fourcut.frame3{
+  background: url('frame3.jpg') center/cover no-repeat;
+  --slot-top: 2.6%;
+  --slot-bottom: 19%;
+  --slot-side: 2.6%;
+  --slot-gap: 2.4%;    /* 중앙 굵은 가로/세로 라인 두께 느낌 */
+  --slot-pad: 0;       /* 라인이 두꺼우니 내부 패딩 0으로 */
+  --slot-radius: 2px;
+}
