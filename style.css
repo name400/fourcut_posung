@@ -62,7 +62,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .howto h2{margin:6px 0 10px}
 .howto-steps{margin:0 0 8px 18px}
 .howto-steps li{
-  margin:12px 0;
+  margin:16px 0;
   line-height:1.5;
 }
 
@@ -266,4 +266,5 @@ button:disabled{opacity:.5;cursor:not-allowed}
 }
 .fourcut.frame3 .fc-title{ font-weight: 800; letter-spacing: .2px; color: #222; }
 .fourcut.frame3 .fc-logo{ width: 24px; height: 24px; object-fit: contain; filter: none; }
+
 
