@@ -7,7 +7,7 @@ let shots = [];               // dataURL 배열 (최대 6)
 let selected = new Set();     // 선택된 index 4개
 let finalDataUrl = null;
 let autoTimer = null, autoRunning = false;
-let remain = 6, currentFacing = "user"; // ← currentDeviceId 제거
+let remain = 6, currentFacing = "user";
 
 // ---------- 페이지 전환 ----------
 const PAGES = { camera: "#pageCamera", select: "#pageSelect", edit: "#pageEdit" };
@@ -25,15 +25,15 @@ async function startCamera() {
       return;
     }
     if (stream) stopCamera();
-    // deviceId 분기 삭제 → facingMode만 사용
-    const constraints = { 
-      video: { 
+    // 광각 완화: 3:4 비율 + 중간 해상도
+    const constraints = {
+      video: {
         facingMode: currentFacing,
-        width: { ideal: 720 },   // 가로 해상도
-        height: { ideal: 960 },  // 세로 해상도 (3:4 비율)
-        aspectRatio: { ideal: 0.75 } // 3:4 비율 (0.75)
-      }, 
-      audio: false 
+        width: { ideal: 720 },
+        height: { ideal: 960 },
+        aspectRatio: { ideal: 0.75 }
+      },
+      audio: false
     };
     stream = await navigator.mediaDevices.getUserMedia(constraints);
     const video = $("#video");
@@ -82,18 +82,16 @@ async function startAutoCapture() {
     remain--;
     updateCountdownUI(remain > 0 ? remain : "");
     if (remain <= 0) {
-      
       remain = 6;
       if (shots.length <= 5) {
         triggerFlash();
         doCapture();
-      }
-      else {
+      } else {
         autoRunning = false;
         clearInterval(autoTimer);
         updateCountdownUI("");
         toggleNextButtons();
-        showPage("select");  
+        showPage("select");
       }
     }
   }, 1000);
@@ -131,6 +129,13 @@ function renderThumbs() {
       renderThumbs();
       renderPreview();
       toggleNextButtons();
+
+      // ✅ 4장 선택 시 자동으로 편집 페이지 이동 + 프레임 즉시 반영
+      if (selected.size === 4) {
+        const fd = $("#frameDesign");
+        if (fd && fd.value) applyFrameDesign(fd.value);
+        showPage("edit");
+      }
     };
     grid.appendChild(d);
   });
@@ -169,7 +174,6 @@ async function inlineImageToDataURL(imgEl) {
 }
 async function prepareLogosForCapture() {
   await inlineImageToDataURL($(".fc-logo"));
-  // 필요시: await inlineImageToDataURL($(".top-logo"));
 }
 
 // ---------- 환경 감지 ----------
@@ -240,28 +244,10 @@ async function renderGallery() {
   }
 }
 
-// ---------- 프레임/글씨 색상 ----------
-function hexToRgb(hex){const m=hex.replace('#','');const b=parseInt(m,16);if(m.length===3){const r=(b>>8)&0xF,g=(b>>4)&0xF,l=b&0xF;return{r:r*17,g:g*17,b:l*17};}return{r:(b>>16)&255,g:(b>>8)&255,b:b&255};}
-function rgbToHex({r,g,b}){const h=n=>n.toString(16).padStart(2,'0');return`#${h(r)}${h(g)}${h(b)}`;}
-function mix(a,b,t){a=hexToRgb(a);b=hexToRgb(b);return rgbToHex({r:Math.round(a.r+(b.r-a.r)*t),g:Math.round(a.g+(b.g-a.g)*t),b:Math.round(a.b+(b.b-a.b)*t)});}
-function updateFrame(){
-  const s = $("#frameStyle").value,
-        c = $("#frameColor").value,
-        f = $("#fourcut");
-  if (s === "polaroid"){ f.className = "fourcut polaroid"; f.style.background = c; }
-  else if (s === "solid"){ f.className = "fourcut solid"; f.style.background = c; }
-  else if (s === "gradientLight"){ f.className="fourcut gradient"; f.style.background=`linear-gradient(135deg, ${c} 0%, ${mix(c,"#fff",0.7)} 100%)`; }
-  else { f.className="fourcut gradient"; f.style.background=`linear-gradient(135deg, ${c} 0%, ${mix(c,"#000",0.5)} 100%)`; }
-}
-function updateFontColor(){
-  const c = $("#fontColor").value;
-  $(".fc-title").style.color = c;
-}
-
-// ---------- 프레임 디자인(프리셋) ----------
+// ---------- 프레임 디자인 ----------
 function applyFrameDesign(key){
   const node = $("#fourcut");
-  node.classList.remove("frame1","frame2","frame3"); // 필요에 맞게 확장
+  node.classList.remove("frame1","frame2","frame3");
   if (key) node.classList.add(key);
 }
 
@@ -337,8 +323,6 @@ function makeViewerUrl(u){
 
 // ---------- 이벤트 ----------
 document.addEventListener("DOMContentLoaded", async () => {
-  // listCameras 호출/관련 코드 없음 (완전 제거)
-
   // 페이지 이동
   $("#toSelect").onclick = () => showPage("select");
   $("#toEdit").onclick = () => { renderPreview(); showPage("edit"); };
@@ -354,16 +338,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     await startCamera();
   };
 
-  // 편집/저장
-  $("#frameStyle").oninput = updateFrame;
-  $("#frameColor").oninput = updateFrame;
-  $("#fontColor").oninput  = updateFontColor;
-  $("#btnMake").onclick    = makeFourcut;
-  $("#btnSave").onclick    = saveImage;
-
-  // 프레임 디자인 선택 (있을 때만)
+  // 프레임 선택
   const fd = $("#frameDesign");
   if (fd) fd.addEventListener("input", (e) => applyFrameDesign(e.target.value));
+
+  // 만들기/저장
+  $("#btnMake").onclick    = makeFourcut;
+  $("#btnSave").onclick    = saveImage;
 
   // 갤러리
   $("#btnGallery").onclick = async () => {
@@ -393,10 +374,5 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
 
   // 초기 상태
-  updateFrame();
-  updateFontColor();
   toggleNextButtons();
 });
-
-
-
