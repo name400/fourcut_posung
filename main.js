@@ -7,7 +7,7 @@ let shots = [];               // dataURL 배열 (최대 6)
 let selected = new Set();     // 선택된 index 4개
 let finalDataUrl = null;
 let autoTimer = null, autoRunning = false;
-let remain = 6, currentFacing = "user", currentDeviceId = null;
+let remain = 6, currentFacing = "user";
 
 // ---------- 페이지 전환 ----------
 const PAGES = { camera: "#pageCamera", select: "#pageSelect", edit: "#pageEdit" };
@@ -38,9 +38,7 @@ async function startCamera() {
       return;
     }
     if (stream) stopCamera();
-    const constraints = currentDeviceId
-      ? { video: { deviceId: { exact: currentDeviceId } }, audio: false }
-      : { video: { facingMode: currentFacing }, audio: false };
+    const constraints = { video: { facingMode: currentFacing }, audio: false };
     stream = await navigator.mediaDevices.getUserMedia(constraints);
     const video = $("#video");
     video.srcObject = stream;
@@ -340,7 +338,6 @@ function makeViewerUrl(u){
 
 // ---------- 이벤트 ----------
 document.addEventListener("DOMContentLoaded", async () => {
-  await listCameras();
 
   // 페이지 이동
   $("#toSelect").onclick = () => showPage("select");
@@ -349,13 +346,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("#backToSelect").onclick = () => showPage("select");
 
   // 카메라
-  $("#cameraSelect").onchange = () => { currentDeviceId = $("#cameraSelect").value; };
   $("#btnStart").onclick = async () => { await startCamera(); startAutoCapture(); };
   $("#btnShot").onclick  = () => { triggerFlash(); doCapture(); if (autoRunning){ remain = 6; updateCountdownUI(remain); } };
   $("#btnReset").onclick = () => resetSession();
   $("#btnFlip").onclick  = async () => {
     currentFacing = (currentFacing === "user") ? "environment" : "user";
-    currentDeviceId = null;
     await startCamera();
   };
 
@@ -398,3 +393,4 @@ document.addEventListener("DOMContentLoaded", async () => {
   updateFontColor();
   toggleNextButtons();
 });
+
