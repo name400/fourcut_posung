@@ -396,3 +396,4 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 초기 상태
   toggleNextButtons();
 });
+
