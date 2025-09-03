@@ -82,15 +82,18 @@ async function startAutoCapture() {
     remain--;
     updateCountdownUI(remain > 0 ? remain : "");
     if (remain <= 0) {
-      triggerFlash();
-      doCapture();
+      
       remain = 6;
-      if (shots.length >= 6) {
+      if (shots.length <= 5) {
+        triggerFlash();
+        doCapture();
+      }
+      else {
         autoRunning = false;
         clearInterval(autoTimer);
         updateCountdownUI("");
         toggleNextButtons();
-        showPage("select");
+        showPage("select");  
       }
     }
   }, 1000);
@@ -394,5 +397,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   updateFontColor();
   toggleNextButtons();
 });
+
 
 
