@@ -4,6 +4,7 @@
   --bg:#ffffff; --panel:#f7f7f7; --card:#fdfdfd;
   --accent:#21dea7; --primary:#ff4c60;
   --text:#111; --muted:#555; --ring:#21dea780;
+  --cam-zoom: 1.28;
 
   --polaroid-bg:#ffffff;
   --fc-min:280px; --fc-base:420px; --fc-max:560px;
@@ -311,4 +312,19 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .fourcut.frame3 .fc-logo{
   width: 24px; height: 24px; object-fit: contain;
   filter: none;                                /* 다크 보정 X */
+}
+/* 카메라 카드 가로 가운데 정렬 + 최대 너비 제한 */
+.card.cam{
+  margin-inline: auto;
+  width: min(92vw, 640px);
+}
+
+/* 광각 크롭 느낌: 중앙부 확대 표시 */
+#video{
+  transform: scale(var(--cam-zoom));
+  transform-origin: 50% 50%;
+}
+#video.mirror{
+  /* 혹시 미러를 쓸 경우 확대와 함께 적용되도록 */
+  transform: scaleX(-1) scale(var(--cam-zoom));
 }
