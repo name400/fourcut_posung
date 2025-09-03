@@ -152,4 +152,15 @@ button:disabled{opacity:.5;cursor:not-allowed}
   .fc-header{ bottom: 10px; }
   .fourcut.polaroid{ padding-bottom: 80px; }
 }
+/* ✅ 프레임 디자인 예시 */
+.fourcut.frame1 {
+  border: 12px solid #ff69b4;   /* 핑크 */
+  border-radius: 20px;
+}
+.fourcut.frame2 {
+  border: 20px double #0066cc; /* 파란 이중선 */
+}
+.fourcut.frame3 {
+  border: 15px dashed #33cc33; /* 녹색 점선 */
+}
 
