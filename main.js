@@ -27,17 +27,20 @@ function showPage(name) {
   if (steps) steps.style.display = visible ? "flex" : "none";
 
   $$(".step").forEach(s => s.classList.toggle("active", s.dataset.step === name));
+
+  // 카메라 페이지가 아니면 항상 타이머 숨김/정지 (안전망)
+  if (name !== "camera") stopAutoCapture();
 }
 
 // ---------- QR 팝업 강제 비활성(리로드/복원 대응) ----------
 function forceHideQrPopup(){
   const p = $("#qrPopup");
   if (!p) return;
-  p.style.display = "none";                   // 보이던 상태 강제 닫기
+  p.style.display = "none";
   const box = $("#qrPopupContainer");
-  if (box) box.innerHTML = "";                // QR 코드 캔버스 제거
+  if (box) box.innerHTML = "";
   const l = $("#qrLoading"); if (l) l.style.display = "none";
-  const e = $("#qrError");   if (e) { e.style.display = "none"; e.textContent = ""; }
+  const e = $("#qrError");  if (e) { e.style.display = "none"; e.textContent = ""; }
 }
 
 // ---------- 카메라 ----------
@@ -60,7 +63,11 @@ async function startCamera() {
     stream = await navigator.mediaDevices.getUserMedia(constraints);
     const video = $("#video");
     video.srcObject = stream;
-    video.onloadedmetadata = () => video.play();
+    video.onloadedmetadata = () => {
+      video.play();
+      // 전면 카메라면 미러 적용
+      video.classList.toggle("mirror", currentFacing === "user");
+    };
     $("#btnShot").disabled = false;
   } catch (e) {
     alert("카메라 접근 실패: " + e.message);
@@ -77,8 +84,25 @@ function triggerFlash() {
   f.classList.add("active");
   setTimeout(() => f.classList.remove("active"), 250);
 }
+
+// 카운트다운 UI: 숫자 없으면 display:none
 function updateCountdownUI(t) {
-  $("#countdown").textContent = t;
+  const el = $("#countdown");
+  if (!el) return;
+  const show = typeof t === "number" ? t > 0 : !!t;
+  if (show) {
+    el.textContent = t;
+    el.style.display = "block";
+  } else {
+    el.textContent = "";
+    el.style.display = "none";
+  }
+}
+
+function stopAutoCapture() {
+  autoRunning = false;
+  if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+  updateCountdownUI("");
 }
 
 async function startAutoCapture() {
@@ -98,6 +122,7 @@ async function startAutoCapture() {
   autoTimer = setInterval(() => {
     if (!autoRunning) {
       clearInterval(autoTimer);
+      autoTimer = null;
       updateCountdownUI("");
       return;
     }
@@ -109,9 +134,7 @@ async function startAutoCapture() {
         triggerFlash();
         doCapture();
       } else {
-        autoRunning = false;
-        clearInterval(autoTimer);
-        updateCountdownUI("");
+        stopAutoCapture();
         toggleNextButtons();
         showPage("select");
       }
@@ -153,8 +176,8 @@ function renderThumbs() {
       toggleNextButtons();
 
       if (selected.size === 4) {
-        const fd = $("#frameDesign");
-        if (fd && fd.value) applyFrameDesign(fd.value);
+        const sel = $("#frameDesign");
+        if (sel && sel.value) applyFrameDesign(sel.value);
         showPage("edit");
       }
     };
@@ -205,17 +228,35 @@ function isMobile(){
 // ---------- 합성 ----------
 async function makeFourcut() {
   if (selected.size !== 4) return alert("4장을 선택하세요");
-  await prepareLogosForCapture();
-  const node = $("#fourcut");
-  const canvas = await html2canvas(node, {
-    backgroundColor: null,
-    useCORS: true,
-    allowTaint: false,
-    scale: isMobile() ? 1.25 : 2
-  });
-  const quality = isMobile() ? 0.82 : 0.92;
-  finalDataUrl = canvas.toDataURL("image/jpeg", quality);
-  $("#btnSave").disabled = false;
+
+  const btn = $("#btnMake");
+  if (btn) { btn.disabled = true; btn.textContent = "합성 중..."; }
+
+  try {
+    await prepareLogosForCapture();
+    const node = $("#fourcut");
+    if (!node || node.offsetParent === null) {
+      throw new Error("미리보기 영역이 보이지 않습니다.");
+    }
+    // 레이아웃 안정화
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const canvas = await html2canvas(node, {
+      backgroundColor: null,
+      useCORS: true,
+      allowTaint: false,
+      imageTimeout: 0,
+      removeContainer: true,
+      scale: isMobile() ? 1.25 : 2,
+    });
+    const quality = isMobile() ? 0.82 : 0.92;
+    finalDataUrl = canvas.toDataURL("image/jpeg", quality);
+    $("#btnSave").disabled = false;
+  } catch (err) {
+    console.error(err);
+    alert("4컷 만들기 실패: " + err.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "4컷 만들기"; }
+  }
 }
 
 // ---------- 저장 & 갤러리 ----------
@@ -239,6 +280,7 @@ function resetSession() {
   $("#btnSave").disabled = true;
   $("#btnMake").disabled = true;
   toggleNextButtons();
+  stopAutoCapture(); // 리셋 시 타이머 종료
 }
 async function renderGallery() {
   const grid = $("#galleryGrid");
@@ -321,7 +363,6 @@ async function uploadFinalToCloudinary(){
   return data.secure_url;
 }
 async function showQrPopupWithUpload(){
-  // 팝업 강제 초기화 후 열기 (중복 방지)
   forceHideQrPopup();
   const loading = $("#qrLoading");
   if (loading) loading.style.display = "block";
@@ -363,10 +404,10 @@ function makeViewerUrl(u){
 document.addEventListener("DOMContentLoaded", () => {
   // 초기 진입: 메인 페이지
   showPage("landing");
-
   // 새로고침/복원 시 QR 팝업 절대 보이지 않게
   forceHideQrPopup();
 });
+
 window.addEventListener("pageshow", () => {
   // BFCache 복원될 때도 팝업 강제 닫기
   forceHideQrPopup();
@@ -378,30 +419,31 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 이용방법 → 촬영
   $("#btnToCamera").onclick = () => showPage("camera");
 
-  // 기존 단계 이동
-  $("#toSelect").onclick = () => showPage("select");
-  $("#toEdit").onclick = () => { renderPreview(); showPage("edit"); };
-  $("#backToCamera").onclick = () => showPage("camera");
-  $("#backToSelect").onclick = () => showPage("select");
+  // 단계 이동
+  $("#toSelect").onclick = () => { stopAutoCapture(); showPage("select"); };
+  $("#toEdit").onclick   = () => { stopAutoCapture(); renderPreview(); showPage("edit"); };
+  $("#backToCamera").onclick = () => { stopAutoCapture(); showPage("camera"); };
+  $("#backToSelect").onclick = () => { stopAutoCapture(); showPage("select"); };
 
   // 카메라
   $("#btnStart").onclick = async () => { await startCamera(); startAutoCapture(); };
-  $("#btnShot").onclick  = () => { triggerFlash(); doCapture(); if (autoRunning){ remain = 6; updateCountdownUI(remain); } };
+  $("#btnShot").onclick  = () => {
+    triggerFlash(); doCapture();
+    if (autoRunning){ remain = 6; updateCountdownUI(remain); }
+  };
   $("#btnReset").onclick = () => resetSession();
   $("#btnFlip").onclick  = async () => {
     currentFacing = (currentFacing === "user") ? "environment" : "user";
     await startCamera();
   };
-  // DOMContentLoaded 안쪽 어딘가에
-  const fd = document.querySelector('#frameDesign');
-  if (fd){ fd.value = 'frame1'; applyFrameDesign('frame1'); }
-    // 프레임 선택
-  const fd = $("#frameDesign");
-  if (fd) fd.addEventListener("input", (e) => applyFrameDesign(e.target.value));
 
-  // 만들기/저장
-  $("#btnMake").onclick    = makeFourcut;
-  $("#btnSave").onclick    = saveImage;
+  // 프레임 선택: 기본 값/리스너 (중복 선언 금지)
+  const frameSelect = $("#frameDesign");
+  if (frameSelect){
+    frameSelect.value = 'frame1';
+    applyFrameDesign('frame1');
+    frameSelect.addEventListener("input", (e) => applyFrameDesign(e.target.value));
+  }
 
   // 갤러리
   $("#btnGallery").onclick = async () => {
@@ -433,4 +475,3 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 초기 상태
   toggleNextButtons();
 });
-
