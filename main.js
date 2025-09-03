@@ -7,7 +7,7 @@ let shots = [];               // dataURL 배열 (최대 6)
 let selected = new Set();     // 선택된 index 4개
 let finalDataUrl = null;
 let autoTimer = null, autoRunning = false;
-let remain = 6, currentFacing = "user", currentDeviceId = null;
+let remain = 6, currentFacing = "user"; // ✅ currentDeviceId 완전 제거
 
 // ---------- 페이지 전환 ----------
 const PAGES = { camera: "#pageCamera", select: "#pageSelect", edit: "#pageEdit" };
@@ -18,19 +18,6 @@ function showPage(name) {
 }
 
 // ---------- 카메라 ----------
-async function listCameras() {
-  const devices = await navigator.mediaDevices.enumerateDevices();
-  const sel = $("#cameraSelect");
-  sel.innerHTML = "";
-  devices.filter(d => d.kind === "videoinput").forEach((d, i) => {
-    const opt = document.createElement("option");
-    opt.value = d.deviceId;
-    opt.textContent = d.label || `카메라 ${i + 1}`;
-    sel.appendChild(opt);
-  });
-  if (!currentDeviceId && sel.options.length > 0) currentDeviceId = sel.options[0].value;
-  sel.value = currentDeviceId || "";
-}
 async function startCamera() {
   try {
     if (!location.protocol.startsWith("https")) {
@@ -38,9 +25,8 @@ async function startCamera() {
       return;
     }
     if (stream) stopCamera();
-    const constraints = currentDeviceId
-      ? { video: { deviceId: { exact: currentDeviceId } }, audio: false }
-      : { video: { facingMode: currentFacing }, audio: false };
+    // ✅ deviceId 분기 삭제, facingMode만 사용
+    const constraints = { video: { facingMode: currentFacing }, audio: false };
     stream = await navigator.mediaDevices.getUserMedia(constraints);
     const video = $("#video");
     video.srcObject = stream;
@@ -173,8 +159,7 @@ async function inlineImageToDataURL(imgEl) {
 }
 async function prepareLogosForCapture() {
   await inlineImageToDataURL($(".fc-logo"));
-  // 상단 로고는 프레임 캡처에 포함되지 않지만, 필요하면 아래도 가능
-  // await inlineImageToDataURL($(".top-logo"));
+  // await inlineImageToDataURL($(".top-logo")); // 필요시 사용
 }
 
 // ---------- 환경 감지 ----------
@@ -266,6 +251,13 @@ function updateFontColor(){
   $(".fc-title").style.color = c;
 }
 
+// ---------- 프레임 디자인(프리셋) ----------
+function applyFrameDesign(key){
+  const node = $("#fourcut");
+  node.classList.remove("frame1","frame2","frame3"); // 필요에 맞게 확장 가능
+  if (key) node.classList.add(key);
+}
+
 // ---------- Cloudinary 업로드 + QR ----------
 const CLOUD_NAME = 'djqkuxfki', UPLOAD_PRESET = 'fourcut_unsigned';
 
@@ -340,7 +332,7 @@ function makeViewerUrl(u){
 
 // ---------- 이벤트 ----------
 document.addEventListener("DOMContentLoaded", async () => {
-  await listCameras();
+  // ✅ listCameras 호출 제거
 
   // 페이지 이동
   $("#toSelect").onclick = () => showPage("select");
@@ -348,14 +340,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("#backToCamera").onclick = () => showPage("camera");
   $("#backToSelect").onclick = () => showPage("select");
 
-  // 카메라
-  $("#cameraSelect").onchange = () => { currentDeviceId = $("#cameraSelect").value; };
+  // 카메라 (드롭다운 제거 상태)
   $("#btnStart").onclick = async () => { await startCamera(); startAutoCapture(); };
   $("#btnShot").onclick  = () => { triggerFlash(); doCapture(); if (autoRunning){ remain = 6; updateCountdownUI(remain); } };
   $("#btnReset").onclick = () => resetSession();
   $("#btnFlip").onclick  = async () => {
     currentFacing = (currentFacing === "user") ? "environment" : "user";
-    currentDeviceId = null;
     await startCamera();
   };
 
@@ -365,6 +355,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("#fontColor").oninput  = updateFontColor;
   $("#btnMake").onclick    = makeFourcut;
   $("#btnSave").onclick    = saveImage;
+
+  // 프레임 디자인 선택
+  $("#frameDesign")?.addEventListener("input", (e) => applyFrameDesign(e.target.value));
 
   // 갤러리
   $("#btnGallery").onclick = async () => {
@@ -393,19 +386,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     $("#backdrop").hidden = true;
   };
 
-  // ✅ 새로 추가
-  $("#frameDesign")?.addEventListener("input", (e) => applyFrameDesign(e.target.value));
   // 초기 상태
   updateFrame();
   updateFontColor();
   toggleNextButtons();
 });
 
-// ✅ 새로 추가
-function applyFrameDesign(key){
-  const node = $("#fourcut");
-  // 기존 className 유지 + 새 디자인 클래스만 덧붙임
-  node.classList.remove("frame1","frame2","frame3");
-  if (key) node.classList.add(key);
-}
 
