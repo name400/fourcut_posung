@@ -219,26 +219,62 @@ function isMobile(){ return /iphone|ipad|ipod|android|mobile/i.test(navigator.us
 // ---------- compose ----------
 async function makeFourcut() {
   if (selected.size !== 4) return alert("4장을 선택하세요");
-  const btn = $("#btnMake");
-  if (btn) { btn.disabled = true; btn.textContent = "합성 중..."; }
+
+  const btnMake = $("#btnMake");
+  const btnSave = $("#btnSave");
+
+  // 진행 상태 표시
+  if (btnMake) { btnMake.disabled = true; btnMake.textContent = "합성 중..."; }
+
   try {
+    // html2canvas 로드 확인
+    if (typeof html2canvas !== "function") {
+      throw new Error("html2canvas 로드 실패(네트워크/캐시 확인)");
+    }
+
+    // 로고 등 외부 이미지로 인한 CORS/taint 예방
     await prepareLogosForCapture();
+
     const node = $("#fourcut");
-    if (!node || node.offsetParent === null) throw new Error("미리보기 영역이 보이지 않습니다.");
+    if (!node || node.offsetParent === null) {
+      throw new Error("미리보기 영역을 찾을 수 없거나 숨겨져 있습니다.");
+    }
+
+    // 미리보기 내부 IMG들이 모두 로드될 때까지 대기
+    const imgs = [...node.querySelectorAll("img")];
+    await Promise.all(
+      imgs.map(img =>
+        img.complete ? Promise.resolve() :
+        new Promise(res => { img.onload = img.onerror = res; })
+      )
+    );
+
+    // 레이아웃 안정화 후 렌더
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-    // eslint-disable-next-line no-undef
+
     const canvas = await html2canvas(node, {
-      backgroundColor: null, useCORS: true, allowTaint: false, imageTimeout: 0, removeContainer: true,
+      backgroundColor: null,
+      useCORS: true,          // 같은 도메인 이미지면 문제 없음
+      allowTaint: false,
+      imageTimeout: 0,
+      removeContainer: true,
       scale: isMobile() ? 1.25 : 2,
     });
+
+    // 결과 저장
     const quality = isMobile() ? 0.82 : 0.92;
     finalDataUrl = canvas.toDataURL("image/jpeg", quality);
-    $("#btnSave").disabled = false;
+
+    // ✅ 저장 버튼 활성화 (속성/프로퍼티 둘 다 확실히)
+    if (btnSave) {
+      btnSave.disabled = false;
+      btnSave.removeAttribute("disabled");
+    }
   } catch (err) {
     console.error(err);
     alert("4컷 만들기 실패: " + err.message);
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = "4컷 만들기"; }
+    if (btnMake) { btnMake.disabled = false; btnMake.textContent = "4컷 만들기"; }
   }
 }
 
@@ -387,3 +423,4 @@ if (document.readyState === "loading") document.addEventListener("DOMContentLoad
 else init();
 
 window.addEventListener("pageshow", forceHideQrPopup);
+
