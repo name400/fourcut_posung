@@ -30,7 +30,7 @@ function showPage(name) {
 
   $$(".step").forEach(s => s.classList.toggle("active", s.dataset.step === name));
 
-  // 카메라 페이지가 아니면 항상 타이머/카운트다운 종료
+  // 카메라 페이지가 아니면 타이머/카운트다운 종료
   if (name !== "camera") stopAutoCapture();
 }
 
@@ -146,8 +146,8 @@ async function startAutoCapture() {
 function doCapture() {
   const video = $("#video");
   const canvas = document.createElement("canvas");
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
+  canvas.width = video.videoWidth || video.clientWidth || 720;
+  canvas.height = video.videoHeight || video.clientHeight || 960;
   const ctx = canvas.getContext("2d");
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
   const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
@@ -216,7 +216,7 @@ async function prepareLogosForCapture() { await inlineImageToDataURL($(".fc-logo
 // ---------- env ----------
 function isMobile(){ return /iphone|ipad|ipod|android|mobile/i.test(navigator.userAgent); }
 
-// ---------- compose ----------
+// ---------- compose (Safari 안전모드 포함) ----------
 async function makeFourcut() {
   if (selected.size !== 4) return alert("4장을 선택하세요");
 
@@ -226,48 +226,45 @@ async function makeFourcut() {
 
   if (btnMake) { btnMake.disabled = true; btnMake.textContent = "합성 중..."; }
 
-  // --- 캡처 안전모드: aspect-ratio 제거 + 높이 고정 + CSS 안전화 ---
-  const cleanup = []; // [el, prevStyleObj]
+  // 스타일 임시 변경 원복용
+  const cleanup = [];
   function setStyle(el, props){
+    if (!el) return;
     const prev = {};
     for (const k in props){ prev[k] = el.style[k]; el.style[k] = props[k]; }
     cleanup.push([el, prev]);
   }
+
   try {
     if (!node) throw new Error("미리보기 영역을 찾을 수 없습니다.");
     if (typeof html2canvas !== "function") throw new Error("html2canvas 로드 실패");
 
-    // 1) 셀 높이 고정(= aspect-ratio 우회)
+    // 컨테이너 aspect-ratio 우회(현재 높이 고정)
+    const rect = node.getBoundingClientRect();
+    if (rect.height) setStyle(node, { height: rect.height + "px", aspectRatio: "auto" });
+
+    // 각 셀 aspect-ratio 우회(가로 기준 고정 높이)
     const cells = [...node.querySelectorAll(".cell")];
     cells.forEach(cell => {
       const w = cell.getBoundingClientRect().width || cell.clientWidth;
-      if (w) {
-        setStyle(cell, {
-          height: (w * 4 / 3) + "px",
-          aspectRatio: "auto"
-        });
-      }
+      if (w) setStyle(cell, { height: (w * 4 / 3) + "px", aspectRatio: "auto" });
     });
 
-    // 2) 프레임 컨테이너/자식의 문제성 CSS 임시 안전화
+    // 사파리에서 문제되는 CSS 임시 해제
     setStyle(node, { isolation: "auto" });
-    node.querySelectorAll("*").forEach(el => {
-      setStyle(el, {
-        backdropFilter: "none",       // 사파리에서 종종 오류 유발
-        mixBlendMode: "normal"        // blending 충돌 회피
-      });
-    });
+    node.querySelectorAll("*").forEach(el => setStyle(el, { backdropFilter: "none", mixBlendMode: "normal" }));
 
-    // 내부 img 로드 대기
+    // 내부 IMG 로딩 대기
     const imgs = [...node.querySelectorAll("img")];
     await Promise.all(imgs.map(img => img.complete ? 1 : new Promise(r => { img.onload = img.onerror = r; })));
 
-    // 레이아웃 안정화 2프레임
+    // 레이아웃 안정화
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
-    // ── 1차 시도
+    // 1차 시도
     let canvas;
     try {
+      // eslint-disable-next-line no-undef
       canvas = await html2canvas(node, {
         backgroundColor: null,
         useCORS: true,
@@ -278,16 +275,16 @@ async function makeFourcut() {
         scale: isMobile() ? 1.25 : 2,
       });
     } catch (e1) {
-      console.warn("1차 캡처 실패, 저해상도 재시도", e1);
-      // ── 2차: 더 보수적으로
+      console.warn("1차 캡처 실패, 보수 설정으로 재시도", e1);
+      // eslint-disable-next-line no-undef
       canvas = await html2canvas(node, {
         backgroundColor: null,
         useCORS: true,
-        allowTaint: true,     // 마지막 수단
+        allowTaint: true,
         removeContainer: true,
         imageTimeout: 0,
         foreignObjectRendering: false,
-        scale: 1,             // 해상도 낮춰 충돌 회피
+        scale: 1,
         logging: false
       });
     }
@@ -295,7 +292,7 @@ async function makeFourcut() {
     const quality = isMobile() ? 0.82 : 0.92;
     finalDataUrl = canvas.toDataURL("image/jpeg", quality);
 
-    // 저장 버튼 확실히 활성화
+    // 저장 버튼 활성화
     if (btnSave) {
       btnSave.disabled = false;
       btnSave.removeAttribute("disabled");
@@ -303,15 +300,14 @@ async function makeFourcut() {
     }
   } catch (err) {
     console.error(err);
-    alert("4컷 만들기 실패: " + (err && err.message ? err.message : err));
+    alert("4컷 만들기 실패: " + (err?.message || err));
   } finally {
-    // --- 안전모드 해제(원복) ---
-    cleanup.forEach(([el, prev]) => {
-      for (const k in prev) el.style[k] = prev[k];
-    });
+    // 임시 스타일 원복
+    cleanup.forEach(([el, prev]) => { for (const k in prev) el.style[k] = prev[k]; });
     if (btnMake) { btnMake.disabled = false; btnMake.textContent = "4컷 만들기"; }
   }
 }
+
 // ---------- gallery & save ----------
 async function saveImage() {
   if (!finalDataUrl) return;
@@ -322,7 +318,8 @@ async function saveImage() {
 }
 function resetSession() {
   shots = []; selected.clear(); finalDataUrl = null;
-  renderThumbs(); renderPreview(); updateCounter(); $("#btnSave").disabled = true; $("#btnMake").disabled = true;
+  renderThumbs(); renderPreview(); updateCounter();
+  $("#btnSave").disabled = true; $("#btnMake").disabled = true;
   toggleNextButtons(); stopAutoCapture();
 }
 async function renderGallery() {
@@ -452,11 +449,11 @@ function init(){
     setTimeout(() => $("#gallery").hidden = true, 250);
     $("#backdrop").hidden = true;
   });
+
+  // 초기 버튼 상태
+  toggleNextButtons();
 }
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
 else init();
 
 window.addEventListener("pageshow", forceHideQrPopup);
-
-
-
