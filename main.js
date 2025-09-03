@@ -408,3 +408,4 @@ function applyFrameDesign(key){
   node.classList.remove("frame1","frame2","frame3");
   if (key) node.classList.add(key);
 }
+
