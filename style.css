@@ -9,6 +9,7 @@
   --fc-min:280px; --fc-base:420px; --fc-max:560px;
   --top-ui-space:220px;
 
+  /* 카메라 확대 배율 (광각 보정) */
   --cam-zoom: 1.28;
 }
 
@@ -60,11 +61,16 @@ button:disabled{opacity:.5;cursor:not-allowed}
 /* Howto */
 .howto h2{margin:6px 0 10px}
 .howto-steps{margin:0 0 8px 18px}
-.howto-steps li{ margin:16px 0; line-height:1.5; }
+.howto-steps li{
+  margin:16px 0;
+  line-height:1.5;
+}
 
 /* Camera */
-.cam{ position:relative;overflow:hidden;aspect-ratio:3/4;
-  display:flex;align-items:center;justify-content:center;max-height:70svh }
+.cam{
+  position:relative;overflow:hidden;aspect-ratio:3/4;
+  display:flex;align-items:center;justify-content:center;max-height:70svh
+}
 .card.cam{ margin-inline:auto; width:min(92vw, 640px); }
 #video{width:100%;height:100%;object-fit:cover;border-radius:12px;background:#f0f0f0;
   transform:scale(var(--cam-zoom));transform-origin:50% 50%}
@@ -145,66 +151,95 @@ button:disabled{opacity:.5;cursor:not-allowed}
   .cam{max-height:60svh}
 }
 
-/* === 보성고 로고 하단 배치 === */
+/* === 보성고 로고 + 2025보성제 하단 배치 === */
 .fourcut { position: relative; }
 .fc-header{
-  position: absolute; left:50%; bottom:12px; transform:translateX(-50%);
-  margin:0; width:calc(100% - 32px); justify-content:center; z-index:2;
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  margin: 0;
+  width: calc(100% - 32px);
+  justify-content: center;
+  z-index: 2;
 }
 .fourcut.polaroid{ padding-bottom: 72px; }
-.fourcut.solid,.fourcut.gradient{ padding-bottom: 56px; }
-@media (max-width:767px){ .fc-header{ bottom:10px; } .fourcut.polaroid{ padding-bottom:80px; } }
+.fourcut.solid, .fourcut.gradient{ padding-bottom: 56px; }
+@media (max-width: 767px){
+  .fc-header{ bottom: 10px; }
+  .fourcut.polaroid{ padding-bottom: 80px; }
+}
 
-/* ==== 프레임 템플릿 (2:3 + 2×2 슬롯) ==== */
+/* =========================
+   프레임 템플릿 (2:3 + 2×2 슬롯)
+   ========================= */
+
+/* 템플릿 모드: 헤더 숨김 */
 .fourcut.frame1 .fc-header,
 .fourcut.frame2 .fc-header,
 .fourcut.frame3 .fc-header{ display:none; }
 
+/* 슬롯 절대 배치 */
 .fourcut.frame1 .grid,
 .fourcut.frame2 .grid,
 .fourcut.frame3 .grid{
-  position:absolute; left:var(--slot-side,3.5%); right:var(--slot-side,3.5%);
-  top:var(--slot-top,3.5%); bottom:var(--slot-bottom,18%);
-  display:grid; grid-template-columns:1fr 1fr; gap:var(--slot-gap,3%);
+  position:absolute;
+  left: var(--slot-side, 3.5%);
+  right: var(--slot-side, 3.5%);
+  top: var(--slot-top, 3.5%);
+  bottom: var(--slot-bottom, 18%);
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--slot-gap, 3%);
 }
+
+/* 슬롯 셀은 투명, 내부 이미지로만 */
 .fourcut.frame1 .cell,
 .fourcut.frame2 .cell,
 .fourcut.frame3 .cell{
-  background:transparent; border-radius:var(--slot-radius,12px);
-  padding:var(--slot-pad,1%); overflow:hidden; outline:none; box-shadow:none;
+  background: transparent;
+  border-radius: var(--slot-radius, 12px);
+  padding: var(--slot-pad, 1%);
+  overflow: hidden;
+  outline: none;
+  box-shadow: none;
 }
 .fourcut.frame1 .cell img,
 .fourcut.frame2 .cell img,
 .fourcut.frame3 .cell img{
   width:100%; height:100%; object-fit:cover;
-  border-radius:calc(var(--slot-radius,12px) - var(--slot-pad,1%));
+  border-radius: calc(var(--slot-radius, 12px) - var(--slot-pad, 1%));
 }
 
+/* 개별 프레임 + 배경 (경로는 style.css 기준) */
 .fourcut.frame1{
-  background:url('./frame1.jpg') center/cover no-repeat !important;
-  --slot-top:3.5%; --slot-bottom:17.5%; --slot-side:3.5%;
-  --slot-gap:3.2%; --slot-pad:1.2%; --slot-radius:12px;
+  background: url('./frame1.jpg') center/cover no-repeat !important;
+  --slot-top: 3.5%; --slot-bottom: 17.5%; --slot-side: 3.5%;
+  --slot-gap: 3.2%; --slot-pad: 1.2%; --slot-radius: 12px;
 }
 .fourcut.frame2{
-  background:url('./frame2.jpg') center/cover no-repeat !important;
-  --slot-top:3.8%; --slot-bottom:17.5%; --slot-side:3.5%;
-  --slot-gap:3.2%; --slot-pad:1.0%; --slot-radius:10px;
+  background: url('./frame2.jpg') center/cover no-repeat !important;
+  --slot-top: 3.8%; --slot-bottom: 17.5%; --slot-side: 3.5%;
+  --slot-gap: 3.2%; --slot-pad: 1.0%; --slot-radius: 10px;
 }
 .fourcut.frame3{
-  background:url('./frame3.jpg') center/cover no-repeat !important;
-  --slot-top:2.6%; --slot-bottom:19%; --slot-side:2.6%;
-  --slot-gap:2.4%; --slot-pad:0; --slot-radius:2px;
+  background: url('./frame3.jpg') center/cover no-repeat !important;
+  --slot-top: 2.6%; --slot-bottom: 19%; --slot-side: 2.6%;
+  --slot-gap: 2.4%; --slot-pad: 0; --slot-radius: 2px;
 }
 
 /* === Camera big buttons === */
-.cam-actions #btnStart, .cam-actions #btnShot{
+.cam-actions #btnStart,
+.cam-actions #btnShot{
   font-size:20px; padding:16px 22px; min-height:56px; border-radius:14px;
 }
 .cam-actions #btnStart{ min-width:160px; }
-.cam-actions #btnShot { min-width:160px; }
+.cam-actions #btnShot{  min-width:160px; }
+
 @media (max-width:767px){
   .cam-actions{ gap:12px; }
-  .cam-actions #btnStart, .cam-actions #btnShot{
+  .cam-actions #btnStart,
+  .cam-actions #btnShot{
     font-size:22px; padding:18px 24px; min-height:60px; flex:1;
   }
 }
