@@ -37,8 +37,37 @@
   </div>
 
   <main class="pages">
+    <!-- 🏁 0단계: 메인 -->
+    <section id="pageLanding" class="page active" aria-label="메인">
+      <div class="panel">
+        <div class="splash card">
+          <h1 class="hero-title">2025 보성제<br><span class="thin">나만의 네컷</span></h1>
+          <p class="hero-sub">친구들과 순간을 남겨요 📸</p>
+          <button id="btnGoHowto" class="primary lg">시작하기</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ℹ️ 0.5단계: 이용방법 -->
+    <section id="pageHowto" class="page" aria-label="이용방법">
+      <div class="panel">
+        <div class="card howto">
+          <h2>이용방법</h2>
+          <ol class="howto-steps">
+            <li><b>촬영 시작</b>을 누르면 6장 자동 촬영(수동도 가능)</li>
+            <li>갤러리에서 <b>4장</b>을 선택</li>
+            <li><b>프레임</b>을 고르고 <b>4컷 만들기</b> → <b>저장(QR)</b></li>
+          </ol>
+          <div class="actions between">
+            <span></span>
+            <button id="btnToCamera" class="accent">다음 → 촬영으로</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- 📸 1단계: 촬영 -->
-    <section id="pageCamera" class="page active" aria-label="촬영 단계">
+    <section id="pageCamera" class="page" aria-label="촬영 단계">
       <div class="panel">
         <div class="card cam">
           <video id="video" autoplay playsinline></video>
