@@ -222,57 +222,93 @@ async function makeFourcut() {
 
   const btnMake = $("#btnMake");
   const btnSave = $("#btnSave");
+  const node = $("#fourcut");
 
-  // 진행 표시
   if (btnMake) { btnMake.disabled = true; btnMake.textContent = "합성 중..."; }
 
+  // --- 캡처 안전모드: aspect-ratio 제거 + 높이 고정 + CSS 안전화 ---
+  const cleanup = []; // [el, prevStyleObj]
+  function setStyle(el, props){
+    const prev = {};
+    for (const k in props){ prev[k] = el.style[k]; el.style[k] = props[k]; }
+    cleanup.push([el, prev]);
+  }
   try {
-    // html2canvas 로드 확인
-    if (typeof html2canvas !== "function") {
-      throw new Error("html2canvas가 로드되지 않았습니다 (네트워크/캐시).");
-    }
+    if (!node) throw new Error("미리보기 영역을 찾을 수 없습니다.");
+    if (typeof html2canvas !== "function") throw new Error("html2canvas 로드 실패");
 
-    // 외부 이미지(CORS) 대비
-    await prepareLogosForCapture();
+    // 1) 셀 높이 고정(= aspect-ratio 우회)
+    const cells = [...node.querySelectorAll(".cell")];
+    cells.forEach(cell => {
+      const w = cell.getBoundingClientRect().width || cell.clientWidth;
+      if (w) {
+        setStyle(cell, {
+          height: (w * 4 / 3) + "px",
+          aspectRatio: "auto"
+        });
+      }
+    });
 
-    const node = $("#fourcut");
-    if (!node || node.offsetParent === null) {
-      throw new Error("미리보기 영역이 보이지 않습니다.");
-    }
+    // 2) 프레임 컨테이너/자식의 문제성 CSS 임시 안전화
+    setStyle(node, { isolation: "auto" });
+    node.querySelectorAll("*").forEach(el => {
+      setStyle(el, {
+        backdropFilter: "none",       // 사파리에서 종종 오류 유발
+        mixBlendMode: "normal"        // blending 충돌 회피
+      });
+    });
 
-    // 내부 <img> 모두 로드 대기 (CSS background는 무시됨)
-    const imgs = Array.from(node.querySelectorAll("img"));
+    // 내부 img 로드 대기
+    const imgs = [...node.querySelectorAll("img")];
     await Promise.all(imgs.map(img => img.complete ? 1 : new Promise(r => { img.onload = img.onerror = r; })));
 
     // 레이아웃 안정화 2프레임
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
-    // 캡처
-    const canvas = await html2canvas(node, {
-      backgroundColor: null,
-      useCORS: true,
-      allowTaint: false,
-      removeContainer: true,
-      imageTimeout: 0,
-      scale: isMobile() ? 1.25 : 2,
-      // foreignObject 비활성: 일부 모바일에서 에러 예방
-      foreignObjectRendering: false
-    });
+    // ── 1차 시도
+    let canvas;
+    try {
+      canvas = await html2canvas(node, {
+        backgroundColor: null,
+        useCORS: true,
+        allowTaint: false,
+        removeContainer: true,
+        imageTimeout: 0,
+        foreignObjectRendering: false,
+        scale: isMobile() ? 1.25 : 2,
+      });
+    } catch (e1) {
+      console.warn("1차 캡처 실패, 저해상도 재시도", e1);
+      // ── 2차: 더 보수적으로
+      canvas = await html2canvas(node, {
+        backgroundColor: null,
+        useCORS: true,
+        allowTaint: true,     // 마지막 수단
+        removeContainer: true,
+        imageTimeout: 0,
+        foreignObjectRendering: false,
+        scale: 1,             // 해상도 낮춰 충돌 회피
+        logging: false
+      });
+    }
 
     const quality = isMobile() ? 0.82 : 0.92;
     finalDataUrl = canvas.toDataURL("image/jpeg", quality);
 
-    // ✅ 저장 버튼 확실히 켜기
+    // 저장 버튼 확실히 활성화
     if (btnSave) {
       btnSave.disabled = false;
       btnSave.removeAttribute("disabled");
       btnSave.setAttribute("aria-disabled","false");
     }
-
   } catch (err) {
     console.error(err);
-    alert("4컷 만들기 실패: " + err.message);
+    alert("4컷 만들기 실패: " + (err && err.message ? err.message : err));
   } finally {
+    // --- 안전모드 해제(원복) ---
+    cleanup.forEach(([el, prev]) => {
+      for (const k in prev) el.style[k] = prev[k];
+    });
     if (btnMake) { btnMake.disabled = false; btnMake.textContent = "4컷 만들기"; }
   }
 }
@@ -421,5 +457,6 @@ if (document.readyState === "loading") document.addEventListener("DOMContentLoad
 else init();
 
 window.addEventListener("pageshow", forceHideQrPopup);
+
 
 
