@@ -10,10 +10,22 @@ let autoTimer = null, autoRunning = false;
 let remain = 6, currentFacing = "user";
 
 // ---------- 페이지 전환 ----------
-const PAGES = { camera: "#pageCamera", select: "#pageSelect", edit: "#pageEdit" };
+const PAGES = {
+  landing: "#pageLanding",
+  howto:   "#pageHowto",
+  camera:  "#pageCamera",
+  select:  "#pageSelect",
+  edit:    "#pageEdit"
+};
 function showPage(name) {
-  Object.values(PAGES).forEach(sel => $(sel).classList.remove("active"));
-  $(PAGES[name]).classList.add("active");
+  Object.values(PAGES).forEach(sel => $(sel)?.classList.remove("active"));
+  $(PAGES[name])?.classList.add("active");
+
+  // 스텝바 노출 제어 (촬영/선택/편집에서만 표시)
+  const steps = $(".steps");
+  const visible = (name === "camera" || name === "select" || name === "edit");
+  if (steps) steps.style.display = visible ? "flex" : "none";
+
   $$(".step").forEach(s => s.classList.toggle("active", s.dataset.step === name));
 }
 
@@ -323,7 +335,15 @@ function makeViewerUrl(u){
 
 // ---------- 이벤트 ----------
 document.addEventListener("DOMContentLoaded", async () => {
-  // 페이지 이동
+  // 초기 진입: 메인 페이지
+  showPage("landing");
+
+  // 메인 → 이용방법
+  $("#btnGoHowto").onclick = () => showPage("howto");
+  // 이용방법 → 촬영
+  $("#btnToCamera").onclick = () => showPage("camera");
+
+  // 페이지 이동 (기존 단계)
   $("#toSelect").onclick = () => showPage("select");
   $("#toEdit").onclick = () => { renderPreview(); showPage("edit"); };
   $("#backToCamera").onclick = () => showPage("camera");
