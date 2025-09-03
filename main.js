@@ -392,10 +392,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     currentFacing = (currentFacing === "user") ? "environment" : "user";
     await startCamera();
   };
-  // DOMContentLoaded 안쪽 어딘가에
-  const fd = document.querySelector('#frameDesign');
-  if (fd){ fd.value = 'frame1'; applyFrameDesign('frame1'); }
-    // 프레임 선택
+
+  // 프레임 선택
   const fd = $("#frameDesign");
   if (fd) fd.addEventListener("input", (e) => applyFrameDesign(e.target.value));
 
@@ -433,4 +431,3 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 초기 상태
   toggleNextButtons();
 });
-
