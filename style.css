@@ -250,3 +250,26 @@ button:disabled{opacity:.5;cursor:not-allowed}
   --slot-pad: 0;       /* 라인이 두꺼우니 내부 패딩 0으로 */
   --slot-radius: 2px;
 }
+/* === Camera big buttons === */
+.cam-actions #btnStart,
+.cam-actions #btnShot{
+  font-size:20px;          /* 글자 크게 */
+  padding:16px 22px;       /* 패딩 늘리기 */
+  min-height:56px;         /* 터치 타겟 키우기 */
+  border-radius:14px;      /* 둥글게 */
+}
+
+.cam-actions #btnStart{ min-width:160px; }
+.cam-actions #btnShot{  min-width:160px; }
+
+/* 모바일에서 더 크게 */
+@media (max-width:767px){
+  .cam-actions{ gap:12px; }
+  .cam-actions #btnStart,
+  .cam-actions #btnShot{
+    font-size:22px;
+    padding:18px 24px;
+    min-height:60px;
+    flex:1;                /* 두 버튼이 가로폭을 넉넉히 차지 */
+  }
+}
