@@ -236,43 +236,104 @@ async function prepareLogosForCapture() { await inlineImageToDataURL($(".fc-logo
 function isMobile(){ return /iphone|ipad|ipod|android|mobile/i.test(navigator.userAgent); }
 
 // ---------- compose (Safari 안전모드 포함) ----------
-async function makeFourcut() {
-  if (selected.size !== 4) return alert("4장을 선택하세요");
+// === 수동 합성 헬퍼 ===
+function loadImageSafe(src){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous"; // dataURL도 OK
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("이미지 로드 실패: " + src));
+    img.src = src;
+  });
+}
+function roundRectPath(ctx, x, y, w, h, r){
+  const rr = Math.max(0, Math.min(r, Math.min(w,h)/2));
+  ctx.beginPath();
+  ctx.moveTo(x+rr, y);
+  ctx.arcTo(x+w, y, x+w, y+h, rr);
+  ctx.arcTo(x+w, y+h, x, y+h, rr);
+  ctx.arcTo(x, y+h, x, y, rr);
+  ctx.arcTo(x, y, x+w, y, rr);
+  ctx.closePath();
+}
+function drawCover(ctx, img, x, y, w, h){
+  const s = Math.max(w / img.width, h / img.height);
+  const dw = img.width * s, dh = img.height * s;
+  const dx = x + (w - dw) / 2, dy = y + (h - dh) / 2;
+  ctx.drawImage(img, dx, dy, dw, dh);
+}
 
-  const btnMake = $("#btnMake");
-  const btnSave = $("#btnSave");
-  const node = $("#fourcut");
+// === 프레임 프리셋 (2:3 + 2×2 슬롯) ===
+const FRAME_PRESETS = {
+  frame1:{ bg:'./frame1.jpg', top:.035, bottom:.175, side:.035, gap:.032, pad:.012, radius:12 },
+  frame2:{ bg:'./frame2.jpg', top:.038, bottom:.175, side:.035, gap:.032, pad:.010, radius:10 },
+  frame3:{ bg:'./frame3.jpg', top:.026, bottom:.190, side:.026, gap:.024, pad:0,    radius: 2 }
+};
 
-  if (btnMake) { btnMake.disabled = true; btnMake.textContent = "합성 중..."; }
+// === 수동 캔버스 합성 ===
+async function composeFourcutManual(){
+  const W = 1600, H = Math.round(W * 3/2); // 2:3
+  const cvs = document.createElement("canvas"); cvs.width = W; cvs.height = H;
+  const ctx = cvs.getContext("2d");
 
-  // 스타일 임시 변경 원복용
-  const cleanup = [];
-  function setStyle(el, props){
-    if (!el) return;
-    const prev = {};
-    for (const k in props){ prev[k] = el.style[k]; el.style[k] = props[k]; }
-    cleanup.push([el, prev]);
+  // 현재 선택된 프레임
+  const node = document.querySelector("#fourcut");
+  const key = ["frame1","frame2","frame3"].find(k => node.classList.contains(k))
+    || (document.querySelector("#frameDesign")?.value || "");
+  const p = FRAME_PRESETS[key] || { top:.05, bottom:.12, side:.05, gap:.03, pad:.008, radius:12, bg:null };
+
+  // 배경
+  if (p.bg) {
+    try { const bg = await loadImageSafe(p.bg); ctx.drawImage(bg, 0, 0, W, H); }
+    catch { ctx.fillStyle = "#fff"; ctx.fillRect(0,0,W,H); }
+  } else {
+    ctx.fillStyle = "#fff"; ctx.fillRect(0,0,W,H);
   }
 
-  try {
-    if (!node) throw new Error("미리보기 영역을 찾을 수 없습니다.");
+  // 슬롯 영역 계산 (2×2, 각 셀 3:4)
+  const gridL = Math.round(p.side*W), gridR = Math.round(p.side*W);
+  const gridT = Math.round(p.top*H),  gridB = Math.round(p.bottom*H);
+  const gridW = W - gridL - gridR,    gridH = H - gridT - gridB;
+  const gap   = Math.round(p.gap * gridW);
 
-    // ✅ html2canvas 로드 보장
-    await ensureHtml2canvas();
+  const cellW = Math.floor((gridW - gap)/2);
+  const cellH = Math.floor(cellW * 4/3);
+  const totalH = cellH*2 + gap;
+  const yStart = Math.round(gridT + (gridH - totalH)/2);
+  const x1 = gridL, x2 = gridL + cellW + gap;
+  const y1 = yStart, y2 = yStart + cellH + gap;
 
-    // 외부 이미지로 인한 CORS/taint 예방 (로고 등)
-    await prepareLogosForCapture();
+  // 선택된 4장 배치(선택 순서 그대로)
+  const ids = [...selected];
+  for (let i=0;i<4;i++){
+    const img = await loadImageSafe(shots[ids[i]]);
+    const x = (i%2===0)?x1:x2, y = (i<2)?y1:y2;
+    const pad = Math.round((p.pad||0) * cellW);
+    const rx = x+pad, ry = y+pad, rw = cellW-pad*2, rh = cellH-pad*2;
+    const r  = Math.round((p.radius||12) * (W/1600));
+    ctx.save(); roundRectPath(ctx, rx,ry,rw,rh,r); ctx.clip(); drawCover(ctx, img, rx,ry,rw,rh); ctx.restore();
+  }
 
-    // 컨테이너 aspect-ratio 우회(현재 높이 고정)
-    const rect = node.getBoundingClientRect();
-    if (rect.height) setStyle(node, { height: rect.height + "px", aspectRatio: "auto" });
+  const mobile = /iphone|ipad|ipod|android|mobile/i.test(navigator.userAgent);
+  return cvs.toDataURL("image/jpeg", mobile ? 0.82 : 0.92);
+}
 
-    // 각 셀 aspect-ratio 우회(가로 기준 고정 높이)
-    const cells = [...node.querySelectorAll(".cell")];
-    cells.forEach(cell => {
-      const w = cell.getBoundingClientRect().width || cell.clientWidth;
-      if (w) setStyle(cell, { height: (w * 4 / 3) + "px", aspectRatio: "auto" });
-    });
+// === 버튼 액션 (수동 합성만 호출) ===
+async function makeFourcut(){
+  if (selected.size !== 4) return alert("4장을 선택하세요");
+  const btnMake = document.querySelector("#btnMake");
+  const btnSave = document.querySelector("#btnSave");
+  if (btnMake){ btnMake.disabled = true; btnMake.textContent = "합성 중..."; }
+  try{
+    finalDataUrl = await composeFourcutManual();
+    if (btnSave){ btnSave.disabled = false; btnSave.removeAttribute("disabled"); btnSave.setAttribute("aria-disabled","false"); }
+  }catch(err){
+    console.error(err);
+    alert("4컷 만들기 실패: " + (err?.message || err));
+  }finally{
+    if (btnMake){ btnMake.disabled = false; btnMake.textContent = "4컷 만들기"; }
+  }
+}
 
     // 사파리에서 문제되는 CSS 임시 해제
     setStyle(node, { isolation: "auto" });
@@ -479,3 +540,4 @@ if (document.readyState === "loading") document.addEventListener("DOMContentLoad
 else init();
 
 window.addEventListener("pageshow", forceHideQrPopup);
+
