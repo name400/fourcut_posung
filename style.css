@@ -238,77 +238,62 @@ button:disabled{opacity:.5;cursor:not-allowed}
   outline: 2px solid #ffe4ef;
 }
 
-/* ---------- 프레임 3 : MZ 미니멀 모던 ----------
-   - 딥톤 배경 + 헤어라인 그라데이션 보더
-   - 은은한 글로우/섀도, 살짝 둥근 썸네일
-   - 하단 헤더는 글라스 느낌으로만 보정 (기존 위치 유지)
-*/
-.fourcut.frame3{
-  /* 그라데이션 보더 트릭 (padding-box / border-box) */
+/* ---------- 프레임 3 : MZ 감성 2x2 ---------- */
+.fourcut.frame3 {
+  border-radius: 20px;
   border: 1px solid transparent;
-  border-radius: 18px;
   background:
-    linear-gradient(180deg, #0f1117, #141922) padding-box,  /* 카드 바탕 */
-    linear-gradient(135deg, rgba(255,255,255,.18), rgba(255,255,255,0)) border-box; /* 헤어라인광 */
+    linear-gradient(180deg, #0e0f14, #161b22) padding-box,
+    linear-gradient(135deg, rgba(255,255,255,.18), rgba(255,255,255,0)) border-box;
   box-shadow:
-    0 12px 28px rgba(0,0,0,.28),
-    inset 0 0 0 1px rgba(255,255,255,.04); /* 안쪽 아주 미세한 라인 */
+    0 8px 20px rgba(0,0,0,.35),
+    inset 0 0 0 1px rgba(255,255,255,.05);
   color: #f5f7fb;
+  padding: 18px;
 }
 
-/* 썸네일 2×2 유지 + 여백 살짝 키움 */
-.fourcut.frame3 .grid{
-  gap: 12px;
+/* 2x2 그리드 유지 (기본 유지, gap만 키움) */
+.fourcut.frame3 .grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
 }
 
-/* 썸네일 카드: 살짝 라운드 + 헤어라인 + 미세 섀도 */
-.fourcut.frame3 .cell{
-  border-radius: 12px;
-  overflow: hidden;
+/* 각 셀(사진) */
+.fourcut.frame3 .cell {
   background: #0a0d12;
-  outline: 1px solid rgba(255,255,255,.06);
-  box-shadow: 0 4px 12px rgba(0,0,0,.22);
-  transition: transform .12s ease, box-shadow .12s ease;
+  border-radius: 14px;
+  overflow: hidden;
+  outline: 1px solid rgba(255,255,255,.08);
+  box-shadow: 0 4px 10px rgba(0,0,0,.25);
+  transition: transform .15s ease, box-shadow .15s ease;
 }
-.fourcut.frame3 .cell:hover{
-  transform: translateY(-1px);
-  box-shadow: 0 10px 20px rgba(0,0,0,.28);
+.fourcut.frame3 .cell:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 18px rgba(0,0,0,.35);
 }
-.fourcut.frame3 .cell img{
-  width:100%; height:100%; object-fit:cover;
+.fourcut.frame3 .cell img {
+  width: 100%; height: 100%; object-fit: cover;
 }
 
-/* 하단 헤더(기존 absolute 배치 유지)만 글라스 느낌 */
-.fourcut.frame3 .fc-header{
-  background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
-  border: 1px solid rgba(255,255,255,.16);
-  border-radius: 10px;
-  padding: 6px 10px;
+/* 헤더 (로고 + 텍스트) */
+.fourcut.frame3 .fc-header {
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 12px;
+  padding: 8px 12px;
   backdrop-filter: blur(6px);
-  box-shadow: 0 6px 16px rgba(0,0,0,.22);
+  box-shadow: 0 4px 12px rgba(0,0,0,.25);
+  margin-top: 10px;
+  display: flex; justify-content: center; align-items: center; gap: 8px;
 }
-
-/* 타이틀은 산뜻하게, 너무 두껍지 않게 */
-.fourcut.frame3 .fc-title{
+.fourcut.frame3 .fc-title {
   font-weight: 800;
-  letter-spacing: .3px;
+  font-size: 15px;
+  letter-spacing: .5px;
   color: #eaf2ff;
 }
-
-/* 로고는 어두운 배경에 어울리게 밝기 보정 */
-.fourcut.frame3 .fc-logo{
-  width: 28px; height: 28px; object-fit: contain;
-  filter: brightness(1.2) saturate(1.02);
-}
-
-/* 살짝의 네온 글로우를 프레임에 퍼뜨려 느낌 추가(과하지 않게) */
-.fourcut.frame3::before{
-  content:"";
-  position:absolute; inset:-8px;
-  border-radius: 22px;
-  background: radial-gradient(60% 50% at 80% 0%, rgba(92, 212, 255, .10), transparent 60%),
-              radial-gradient(60% 50% at 10% 100%, rgba(110, 255, 205, .10), transparent 60%);
-  filter: blur(12px);
-  pointer-events:none;
-  z-index:-1;
+.fourcut.frame3 .fc-logo {
+  width: 26px; height: 26px; object-fit: contain;
+  filter: brightness(1.2) saturate(1.05);
 }
