@@ -26,7 +26,15 @@ async function startCamera() {
     }
     if (stream) stopCamera();
     // deviceId 분기 삭제 → facingMode만 사용
-    const constraints = { video: { facingMode: currentFacing }, audio: false };
+    const constraints = { 
+      video: { 
+        facingMode: currentFacing,
+        width: { ideal: 720 },   // 가로 해상도
+        height: { ideal: 960 },  // 세로 해상도 (3:4 비율)
+        aspectRatio: { ideal: 0.75 } // 3:4 비율 (0.75)
+      }, 
+      audio: false 
+    };
     stream = await navigator.mediaDevices.getUserMedia(constraints);
     const video = $("#video");
     video.srcObject = stream;
@@ -386,4 +394,5 @@ document.addEventListener("DOMContentLoaded", async () => {
   updateFontColor();
   toggleNextButtons();
 });
+
 
