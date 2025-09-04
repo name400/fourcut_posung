@@ -228,6 +228,17 @@ button:disabled{opacity:.5;cursor:not-allowed}
   --slot-gap: 2.4%; --slot-pad: 0; --slot-radius: 2px;
 }
 
+/* === frame1/2 사진 슬롯을 frame3와 완전히 동일하게(크기 + 모서리) === */
+.fourcut.frame1,
+.fourcut.frame2{
+  --slot-top: 2.6%;
+  --slot-bottom: 19%;
+  --slot-side: 2.6%;
+  --slot-gap: 2.4%;
+  --slot-pad: 0;
+  --slot-radius: 2px;
+}
+
 /* === Camera big buttons === */
 .cam-actions #btnStart,
 .cam-actions #btnShot{
@@ -243,3 +254,4 @@ button:disabled{opacity:.5;cursor:not-allowed}
     font-size:22px; padding:18px 24px; min-height:60px; flex:1;
   }
 }
+
