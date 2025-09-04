@@ -344,18 +344,53 @@ function applyFrameDesign(key){
   const btnSave = $("#btnSave"); if (btnSave) btnSave.disabled = true;
 }
 
-// ---------- Cloudinary ----------
+
+  // dataURL -> Blob (fetch(data:) 미사용: iOS Safari 대응)
+function dataURLtoBlob(dataURL) {
+  const [head, data] = dataURL.split(',');
+  const mime = (head.match(/data:([^;]+)/) || [,'application/octet-stream'])[1];
+  const binary = head.includes('base64') ? atob(data) : decodeURIComponent(data);
+  const len = binary.length;
+  const u8 = new Uint8Array(len);
+  for (let i = 0; i < len; i++) u8[i] = binary.charCodeAt(i);
+  return new Blob([u8], { type: mime });
+}
+// ---------- Cloudinary ----------// ---------- Cloudinary ----------
 const CLOUD_NAME = 'djqkuxfki', UPLOAD_PRESET = 'fourcut_unsigned';
+
 async function uploadFinalToCloudinary(){
-  const blob = await (await fetch(finalDataUrl)).blob();
-  if (blob.size > 10 * 1024 * 1024) throw new Error(`이미지가 너무 큽니다 (${(blob.size/1024/1024).toFixed(1)}MB).`);
+  if (!finalDataUrl) throw new Error("최종 이미지가 없습니다. 먼저 4컷 만들기를 실행하세요.");
+
+  // ✅ Safari 대응: fetch(data:) 대신 직접 변환
+  const blob = dataURLtoBlob(finalDataUrl);
+
+  // 용량 체크(10MB 초과 방지)
+  if (blob.size > 10 * 1024 * 1024) {
+    throw new Error(`이미지가 너무 큽니다 (${(blob.size/1024/1024).toFixed(1)}MB).`);
+  }
+
   const form = new FormData();
   form.append('file', blob);
   form.append('upload_preset', UPLOAD_PRESET);
+
   const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
-    method:'POST', body: form, mode: 'cors', credentials: 'omit', cache: 'no-store'
+    method:'POST',
+    body: form,
+    mode: 'cors',
+    credentials: 'omit',
+    cache: 'no-store'
   });
-  if (!res.ok) { const txt = await res.text().catch(()=> ""); throw new Error(`업로드 실패(${res.status}). ${txt?.slice(0,120)}`); }
+
+  if (!res.ok) {
+    // 에러 내용을 UI에서 확인할 수 있게 최대한 보여줌
+    let msg = `업로드 실패(${res.status})`;
+    try {
+      const t = await res.text();
+      if (t) msg += `: ${t.slice(0,180)}`;
+    } catch {}
+    throw new Error(msg);
+  }
+
   const data = await res.json();
   if (!data.secure_url) throw new Error("업로드 응답에 secure_url이 없습니다.");
   return data.secure_url;
@@ -450,3 +485,4 @@ if (document.readyState === "loading") document.addEventListener("DOMContentLoad
 else init();
 
 window.addEventListener("pageshow", forceHideQrPopup);
+
